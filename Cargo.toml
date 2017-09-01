@@ -14,3 +14,4 @@ keywords = ["user", "agent"]
 [dependencies]
 yaml-rust = "0.3"
 regex = "0.1"
+lazy_static = "0.2"

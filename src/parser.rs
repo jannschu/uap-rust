@@ -10,11 +10,29 @@ use result::*;
 use yaml;
 
 ///The `Parser` type, used for parsing user agent strings into `Client` structs.
-#[derive(Debug)]
 pub struct Parser {
-    pub ua_regex: Vec<UserAgentParser>,
-    pub devices_regex: Vec<DeviceParser>,
-    pub os_regex: Vec<OSParser>,
+}
+
+lazy_static! {
+    static ref UAP: Vec<UserAgentParser> =  {
+        let s = include_str!("uap-core/regexes.yaml");
+        let docs = YamlLoader::load_from_str(&s).unwrap();
+        yaml::from_map(&docs[0],"user_agent_parsers")
+            .map(|y| yaml::filter_map_over_arr(y, UserAgentParser::from_yaml)).unwrap()
+    };
+    static ref DP: Vec<DeviceParser> =  {
+        let s = include_str!("uap-core/regexes.yaml");
+        let docs = YamlLoader::load_from_str(&s).unwrap();
+        let r: Vec<DeviceParser> = yaml::from_map(&docs[0],"device_parsers")
+            .map(|y| yaml::filter_map_over_arr(y, DeviceParser::from_yaml)).unwrap();
+        r
+    };
+    static ref OSP: Vec<OSParser> =  {
+        let s = include_str!("uap-core/regexes.yaml");
+        let docs = YamlLoader::load_from_str(&s).unwrap();
+        yaml::from_map(&docs[0],"os_parsers")
+            .map(|y| yaml::filter_map_over_arr(y, OSParser::from_yaml)).unwrap()
+    };
 }
 
 impl Parser {
@@ -34,16 +52,9 @@ impl Parser {
     ///
     ///See [uap-core](https://github.com/ua-parser/uap-core/) documentation for information on the
     ///format.
-    pub fn from_str(s: &str) -> Result<Parser> {
+    pub fn from_str(_: &str) -> Result<Parser> {
         //Parse the yaml.
-        let docs = try!(YamlLoader::load_from_str(&s));
         let p = Parser {
-            devices_regex: yaml::from_map(&docs[0],"device_parsers")
-                .map(|y| yaml::filter_map_over_arr(y, DeviceParser::from_yaml)).unwrap(),
-            ua_regex: yaml::from_map(&docs[0],"user_agent_parsers")
-                .map(|y| yaml::filter_map_over_arr(y, UserAgentParser::from_yaml)).unwrap(),
-            os_regex: yaml::from_map(&docs[0],"os_parsers")
-                .map(|y| yaml::filter_map_over_arr(y, OSParser::from_yaml)).unwrap(),
         };
         Ok(p)
     }
@@ -53,8 +64,8 @@ impl Parser {
     ///See [uap-core](https://github.com/ua-parser/uap-core/) documentation for information on the
     ///format.
     pub fn new() -> Result<Parser> {
-        let s = include_str!("uap-core/regexes.yaml");
-        Parser::from_str(&s)
+         let s = include_str!("uap-core/regexes.yaml");
+         Parser::from_str(&s)
     }
 
     ///Parses a user agent string into a `Client` struct.
@@ -62,7 +73,7 @@ impl Parser {
         //For each of the attributes, we find the first regex that matches and use that. Otherwise
         //we use a default value.
 
-        let ua = self.ua_regex.iter().filter_map(|u| u.parse(agent.clone())).next();
+        let ua = UAP.iter().filter_map(|u| u.parse(agent.clone())).next();
         let u = ua.unwrap_or(
             UserAgent {
                 family: "Other".to_string(),
@@ -70,14 +81,14 @@ impl Parser {
                 minor: None,
                 patch: None,
             });
-        let dev = self.devices_regex.iter().filter_map(|d| d.parse(agent.clone())).next();
+        let dev = DP.iter().filter_map(|d| d.parse(agent.clone())).next();
         let d = dev.unwrap_or(Device {
             family: "Other".to_string(),
             model: None,
             brand: None,
             regex: None,
         });
-        let oss = self.os_regex.iter().filter_map(|d| d.parse(agent.clone())).next();
+        let oss = OSP.iter().filter_map(|d| d.parse(agent.clone())).next();
         let o = oss.unwrap_or(OS {
             family: "Other".to_string(),
             major: None,

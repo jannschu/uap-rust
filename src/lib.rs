@@ -19,6 +19,9 @@ println!("{:?}",c);
 extern crate yaml_rust;
 extern crate regex;
 
+#[macro_use]
+extern crate lazy_static;
+
 pub mod parser;
 pub mod client;
 pub mod ua;
