@@ -1,4 +1,5 @@
-#ua-parser for rust
+# ua-parser for rust
+
 User agent parser library for Rust based on the
 [ua-parser](https://github.com/ua-parser) project.
 
@@ -9,7 +10,7 @@ Add to your `Cargo.toml`:
 uap-rust = "0.0.*"
 ```
 
-##Usage example
+## Usage example
 
 ```rust
 use uap_rust::parser::Parser;
@@ -21,11 +22,12 @@ println!("{:?}",c);
  //Output: Client { user_agent: UserAgent { family: "Mobile Safari", major: Some("5"), minor: Some("1"), patch: None }, os: OS { family: "iOS", major: Some("5"), minor: Some("1"), patch: Some("1"), patch_minor: None }, device: Device { family: "iPhone", brand: Some("Apple"), model: Some("iPhone") } }
 ```
 
-##Documentation
+## Documentation
 
 Documentation is available [here](https://mrbechcrates.github.io/uap-rust-doc/uap_rust/index.html)
 
-##Building from source.
+## Building from source.
+
 Recursive clone the [uap-core](https://github.com/ua-parser/uap-core) project for the parser regexes:
 
 ```
