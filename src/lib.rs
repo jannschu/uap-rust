@@ -30,6 +30,75 @@ pub mod device;
 mod result;
 mod yaml;
 
+use regex::{Captures, Error, Regex, RegexBuilder};
+
+lazy_static! {
+    static ref RE_REPLACE: Regex = Regex::new(r"\$\d+").unwrap();
+}
+
+fn replace_matches(s: &str, m: &Captures) -> Option<String> {
+    let s = RE_REPLACE
+        .replace_all(&s, |c: &Captures| {
+            if let Some(i) = c[0][1..].parse().ok() {
+                m.get(i).map(|x| x.as_str()).unwrap_or("")
+            } else {
+                ""
+            }.to_string()
+        })
+        .trim()
+        .to_string();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+fn get_or_none(c: &Captures, i: usize) -> Option<String> {
+    if let Some(group) = c.get(i) {
+        let s = group.as_str().to_string();
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    } else {
+        None
+    }
+}
+
+fn build_uap_regexp(pattern: &str, flags: Option<&String>) -> Result<Regex, Error> {
+    let mut pattern = pattern
+        .replace(r"\ ", r" ")
+        .replace(r"\/", r"/")
+        .replace(r"\!", r"!");
+    if let Some(flags) = flags {
+        pattern = format!("(?{}){}", flags, pattern);
+    }
+    let mut builder = RegexBuilder::new(&pattern);
+    // We need to increase this limit for the bot
+    // patterns used by uap-core.
+    // Fixed by https://github.com/ua-parser/uap-core/pull/62.
+    builder.nest_limit(100);
+    builder.build()
+}
+
+#[test]
+fn test_replace_matches() {
+    let re = Regex::new(r"Ok (\d+) (\d+)").unwrap();
+    let captures = re.captures("Ok 1 2").unwrap();
+    assert_eq!(
+        replace_matches("$2 $1 $2", &captures),
+        Some("2 1 2".to_string())
+    );
+}
+
+#[test]
+fn test_regex() {
+    let re = build_uap_regexp(r#"(?:\/[A-Za-z0-9\.]+)? *([A-Za-z0-9 \-_\!\[\]:]*(?:[Aa]rchiver|[Ii]ndexer|[Ss]craper|[Bb]ot|[Ss]pider|[Cc]rawl[a-z]*))/(\d+)(?:\.(\d+)(?:\.(\d+))?)?"#, None).unwrap();
+    assert!(re.is_match(r"449 Overture-WebCrawler/3.8/Fresh (atw-crawler at fast dot no; http://fast.no/support/crawler.asp"));
+}
+
 #[cfg(test)]
 mod test {
     use parser;
@@ -43,11 +112,10 @@ mod test {
     use std::fs::File;
 
     #[test]
-    fn basic_au_test() {
+    fn test_basic_au() {
         let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3".to_string();
         let p = parser::Parser::new().unwrap();
         let c = p.parse(agent);
-        println!("{:?}", c);
         assert_eq!(
             Client {
                 user_agent: UserAgent {
@@ -77,156 +145,75 @@ mod test {
     #[test]
     fn test_device() {
         let p = parser::Parser::new().unwrap();
-        assert!(p.devices_regex.len() > 0);
-        let mut test_file = File::open("src/uap-core/tests/test_device.yaml").unwrap();
-        let mut yaml_str = String::new();
-        let _ = test_file.read_to_string(&mut yaml_str).unwrap();
-        let y = YamlLoader::load_from_str(&yaml_str).unwrap();
-        let cases = from_map(&y[0], "test_cases").unwrap();
-        let failed = filter_map_over_arr(cases, |c| {
-            let uas = from_map(c, "user_agent_string").unwrap().as_str().unwrap();
+        assert!(!parser::DP.is_empty());
+        let cases = load_cases("src/uap-core/tests/test_device.yaml");
+        for case in cases.iter() {
+            let uas = from_map(case, "user_agent_string")
+                .unwrap()
+                .as_str()
+                .unwrap();
             let client = p.parse(uas.to_string());
-
-            let family =
-                compare_with_parsed(&Some(client.device.family.clone()), "family", c, &client);
-            if family.is_some() {
-                return family;
-            }
-
-            let brand = compare_with_parsed(&client.device.brand, "brand", c, &client);
-            if brand.is_some() {
-                return brand;
-            }
-
-            let model = compare_with_parsed(&client.device.model, "model", c, &client);
-            if model.is_some() {
-                return model;
-            }
-            None
-        });
-
-        //for f in failed.clone() {
-        //    println!("{}", f);
-        //}
-
-        assert_eq!(0, failed.len());
+            let dev = client.device;
+            assert_eq!(Some(dev.family), case_get(&case, "family"));
+            assert_eq!(dev.brand, case_get(&case, "brand"));
+            assert_eq!(dev.model, case_get(&case, "model"));
+        }
     }
 
     #[test]
     fn test_user_agent() {
         let p = parser::Parser::new().unwrap();
-        assert!(p.devices_regex.len() > 0);
-        let mut test_file = File::open("src/uap-core/tests/test_ua.yaml").unwrap();
-        let mut yaml_str = String::new();
-        let _ = test_file.read_to_string(&mut yaml_str).unwrap();
-        let y = YamlLoader::load_from_str(&yaml_str).unwrap();
-        let cases = from_map(&y[0], "test_cases").unwrap();
-        let failed = filter_map_over_arr(cases, |c| {
-            let uas = from_map(c, "user_agent_string").unwrap().as_str().unwrap();
+        assert!(!parser::UAP.is_empty());
+        let cases = load_cases("src/uap-core/tests/test_ua.yaml");
+        for case in cases.iter() {
+            let uas = from_map(case, "user_agent_string")
+                .unwrap()
+                .as_str()
+                .unwrap();
             let client = p.parse(uas.to_string());
-
-            let family = compare_with_parsed(
-                &Some(client.user_agent.family.clone()),
-                "family",
-                c,
-                &client,
-            );
-            if family.is_some() {
-                return family;
-            }
-
-            let major = compare_with_parsed(&client.user_agent.major, "major", c, &client);
-            if major.is_some() {
-                return major;
-            }
-
-            let minor = compare_with_parsed(&client.user_agent.minor, "minor", c, &client);
-            if minor.is_some() {
-                return minor;
-            }
-
-            let patch = compare_with_parsed(&client.user_agent.patch, "patch", c, &client);
-            if patch.is_some() {
-                return patch;
-            }
-
-            None
-        });
-
-        //for f in failed.clone() {
-        //    println!("{}", f);
-        //}
-
-        assert_eq!(0, failed.len());
+            let ua = client.user_agent;
+            println!("{}", uas);
+            assert_eq!(Some(ua.family), case_get(&case, "family"));
+            assert_eq!(ua.major, case_get(&case, "major"));
+            assert_eq!(ua.minor, case_get(&case, "minor"));
+            assert_eq!(ua.patch, case_get(&case, "patch"));
+        }
     }
 
     #[test]
     fn test_os() {
         let p = parser::Parser::new().unwrap();
-        assert!(p.devices_regex.len() > 0);
-        let mut test_file = File::open("src/uap-core/tests/test_os.yaml").unwrap();
-        let mut yaml_str = String::new();
-        let _ = test_file.read_to_string(&mut yaml_str).unwrap();
-        let y = YamlLoader::load_from_str(&yaml_str).unwrap();
-        let cases = from_map(&y[0], "test_cases").unwrap();
-        let failed = filter_map_over_arr(cases, |c| {
-            let uas = from_map(c, "user_agent_string").unwrap().as_str().unwrap();
+        assert!(!parser::OSP.is_empty());
+        let cases = load_cases("src/uap-core/tests/test_os.yaml");
+        for case in cases.iter() {
+            let uas = case["user_agent_string"].as_str().unwrap();
             let client = p.parse(uas.to_string());
-
-            let family = compare_with_parsed(&Some(client.os.family.clone()), "family", c, &client);
-            if family.is_some() {
-                return family;
-            }
-
-            let major = compare_with_parsed(&client.os.major, "major", c, &client);
-            if major.is_some() {
-                return major;
-            }
-
-            let minor = compare_with_parsed(&client.os.minor, "minor", c, &client);
-            if minor.is_some() {
-                return minor;
-            }
-
-            let patch = compare_with_parsed(&client.os.patch, "patch", c, &client);
-            if patch.is_some() {
-                return patch;
-            }
-
-            let patch_minor =
-                compare_with_parsed(&client.os.patch_minor, "patch_minor", c, &client);
-            if patch_minor.is_some() {
-                return patch_minor;
-            }
-
-            None
-        });
-
-        //for f in failed.clone() {
-        //    println!("{}", f);
-        //}
-
-        assert_eq!(0, failed.len());
+            let os = client.os;
+            assert_eq!(Some(os.family), case_get(&case, "family"));
+            assert_eq!(os.major, case_get(&case, "major"));
+            assert_eq!(os.minor, case_get(&case, "minor"));
+            assert_eq!(os.patch, case_get(&case, "patch"));
+            assert_eq!(os.patch_minor, case_get(&case, "patch_minor"));
+        }
     }
 
-    fn compare_with_parsed(
-        actual: &Option<String>,
-        mapkey: &str,
-        c: &Yaml,
-        client: &Client,
-    ) -> Option<String> {
-        let opt = from_map(c, mapkey).unwrap();
-        if !opt.is_null() {
-            let value = opt.as_str().unwrap().to_string();
-            let parsed = actual.clone().unwrap_or(String::new());
-            if parsed != value {
-                return Some(format!(
-                    "{} does not match: {:?}, actual: {:?}",
-                    mapkey, c, client
-                ));
-            }
+    fn case_get<'a>(yaml: &'a Yaml, key: &str) -> Option<String> {
+        let val = from_map(yaml, key).unwrap();
+        println!("key={} val={:?}", key, val);
+        if val.is_null() {
+            None
+        } else {
+            val.as_str().map(|c| c.to_string())
         }
-        None
+    }
+
+    fn load_cases(path: &str) -> Vec<Yaml> {
+        let mut test_file = File::open(path).unwrap();
+        let mut yaml_str = String::new();
+        let _ = test_file.read_to_string(&mut yaml_str).unwrap();
+        let docs = YamlLoader::load_from_str(&yaml_str).unwrap();
+        let cases = (&docs[0])["test_cases"].as_vec().unwrap();
+        cases.clone()
     }
 
 }

@@ -2,6 +2,8 @@ use yaml_rust::Yaml;
 use yaml;
 use regex::Regex;
 
+use {build_uap_regexp, get_or_none};
+
 ///`UserAgent` contains the user agent information.
 #[derive(Debug, PartialEq, Eq)]
 pub struct UserAgent {
@@ -22,11 +24,9 @@ pub struct UserAgentParser {
 
 impl UserAgentParser {
     pub fn from_yaml(y: &Yaml) -> Option<UserAgentParser> {
+        let regex_flag = yaml::string_from_map(y, "regex_flag");
         yaml::string_from_map(y, "regex")
-            .map(|r| r.replace(r"\-", r"-"))
-            .map(|r| r.replace(r"\ ", r" "))
-            .map(|r| r.replace(r"\/", r"/"))
-            .and_then(|r| Regex::new(&r[..]).ok())
+            .and_then(|r| build_uap_regexp(&r, regex_flag.as_ref()).ok())
             .map(|r| UserAgentParser {
                 regex: r,
                 family: yaml::string_from_map(y, "family_replacement"),
@@ -37,23 +37,22 @@ impl UserAgentParser {
     }
 
     pub fn parse(&self, agent: String) -> Option<UserAgent> {
-        self.regex.captures(&agent[..]).map(|c| {
+        self.regex.captures(&agent).map(|c| {
             let family = self.family
                 .clone()
-                .and_then(|f| c.at(1).map(|a| f.replace("$1", a)))
-                .unwrap_or(c.at(1).unwrap_or("Other").to_string());
-            let major = self.major
-                .clone()
-                .and_then(|f| c.at(2).map(|a| f.replace("$2", a)))
-                .or(c.at(2).map(String::from));
-            let minor = self.minor
-                .clone()
-                .and_then(|f| c.at(3).map(|a| f.replace("$3", a)))
-                .or(c.at(3).map(String::from));
-            let patch = self.patch
-                .clone()
-                .and_then(|f| c.at(4).map(|a| f.replace("$4", a)))
-                .or(c.at(4).map(String::from));
+                .and_then(|f| {
+                    if let Some(group1) = c.get(1) {
+                        Some(f.replace("$1", group1.as_str()))
+                    } else {
+                        Some(f)
+                    }
+                })
+                .or_else(|| c.get(1).map(|c| c.as_str().to_string()))
+                .unwrap_or_else(|| "Other".to_string());
+
+            let major = self.major.clone().or_else(|| get_or_none(&c, 2));
+            let minor = self.minor.clone().or_else(|| get_or_none(&c, 3));
+            let patch = self.patch.clone().or_else(|| get_or_none(&c, 4));
 
             UserAgent {
                 family: family,

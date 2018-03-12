@@ -16,6 +16,6 @@ where
     F: Fn(&Yaml) -> Option<T>,
 {
     arr.as_vec()
-        .map(|a| a.iter().filter_map(f).collect())
+        .map(|case| case.iter().filter_map(f).collect())
         .unwrap_or(Vec::new())
 }

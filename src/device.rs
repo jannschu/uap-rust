@@ -1,6 +1,8 @@
 use yaml_rust::Yaml;
 use yaml;
-use regex::{Captures, Regex};
+use regex::Regex;
+
+use {build_uap_regexp, get_or_none, replace_matches};
 
 ///`Device` contains the device information from the user agent.
 #[derive(Debug, PartialEq, Eq)]
@@ -23,17 +25,7 @@ impl DeviceParser {
     pub fn from_yaml(y: &Yaml) -> Option<DeviceParser> {
         let regex_flag = yaml::string_from_map(y, "regex_flag");
         yaml::string_from_map(y, "regex")
-            .map(|r| {
-                if regex_flag.is_some() {
-                    format!("(?i){}", r)
-                } else {
-                    r
-                }
-            })
-            .map(|r| r.replace(r"\-", r"-"))
-            .map(|r| r.replace(r"\ ", r" "))
-            .map(|r| r.replace(r"\/", r"/"))
-            .and_then(|r| Regex::new(&r[..]).ok())
+            .and_then(|r| build_uap_regexp(&r, regex_flag.as_ref()).ok())
             .map(|r| DeviceParser {
                 regex: r,
                 family: yaml::string_from_map(y, "device_replacement"),
@@ -41,31 +33,17 @@ impl DeviceParser {
                 model: yaml::string_from_map(y, "model_replacement"),
             })
     }
-    fn replace(captures: &Captures, s: String) -> String {
-        captures
-            .iter()
-            .zip((0..captures.len()))
-            .fold(s, |a, (c, i)| {
-                a.replace(&format!("${}", i)[..], c.unwrap_or(""))
-            })
-            .trim()
-            .to_string()
-    }
 
     pub fn parse(&self, agent: String) -> Option<Device> {
-        self.regex.captures(&agent[..]).map(|c| {
+        self.regex.captures(&agent).map(|c| {
             let family = self.family
                 .clone()
-                .map(|f| DeviceParser::replace(&c, f))
-                .unwrap_or(c.at(1).unwrap_or("Other").to_string());
-            let brand = self.brand
-                .clone()
-                .map(|f| DeviceParser::replace(&c, f))
-                .or(c.at(1).map(|s| s.to_string()));
+                .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(&f, &c))
+                .unwrap_or_else(|| "Other".to_string());
+            let brand = self.brand.clone().and_then(|m| replace_matches(&m, &c));
             let model = self.model
                 .clone()
-                .map(|f| DeviceParser::replace(&c, f))
-                .or(c.at(1).map(|s| s.to_string()));
+                .map_or_else(|| get_or_none(&c, 1), |m| replace_matches(&m, &c));
             Device {
                 family: family,
                 brand: brand,

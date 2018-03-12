@@ -13,20 +13,20 @@ use yaml;
 pub struct Parser {}
 
 lazy_static! {
-    static ref UAP: Vec<UserAgentParser> =  {
+    pub(crate) static ref UAP: Vec<UserAgentParser> =  {
         let s = include_str!("uap-core/regexes.yaml");
         let docs = YamlLoader::load_from_str(&s).unwrap();
         yaml::from_map(&docs[0],"user_agent_parsers")
             .map(|y| yaml::filter_map_over_arr(y, UserAgentParser::from_yaml)).unwrap()
     };
-    static ref DP: Vec<DeviceParser> =  {
+    pub(crate) static ref DP: Vec<DeviceParser> =  {
         let s = include_str!("uap-core/regexes.yaml");
         let docs = YamlLoader::load_from_str(&s).unwrap();
         let r: Vec<DeviceParser> = yaml::from_map(&docs[0],"device_parsers")
             .map(|y| yaml::filter_map_over_arr(y, DeviceParser::from_yaml)).unwrap();
         r
     };
-    static ref OSP: Vec<OSParser> =  {
+    pub(crate) static ref OSP: Vec<OSParser> =  {
         let s = include_str!("uap-core/regexes.yaml");
         let docs = YamlLoader::load_from_str(&s).unwrap();
         yaml::from_map(&docs[0],"os_parsers")
@@ -84,7 +84,7 @@ impl Parser {
             brand: None,
             regex: None,
         });
-        let oss = OSP.iter().filter_map(|d| d.parse(agent.clone())).next();
+        let oss = OSP.iter().filter_map(|o| o.parse(agent.clone())).next();
         let o = oss.unwrap_or(OS {
             family: "Other".to_string(),
             major: None,

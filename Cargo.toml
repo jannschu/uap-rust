@@ -12,6 +12,6 @@ keywords = ["user", "agent"]
 
 
 [dependencies]
-yaml-rust = "0.3"
-regex = "0.1"
-lazy_static = "0.2"
+yaml-rust = "0.4"
+regex = "0.2.8"
+lazy_static = "1.0"
