@@ -16,8 +16,8 @@ println!("{:?}",c);
 ```
 */
 
-extern crate yaml_rust;
 extern crate regex;
+extern crate yaml_rust;
 
 #[macro_use]
 extern crate lazy_static;
@@ -38,37 +38,40 @@ mod test {
     use device::Device;
     use os::OS;
     use yaml::*;
-    use yaml_rust::{YamlLoader, Yaml};
+    use yaml_rust::{Yaml, YamlLoader};
     use std::io::prelude::*;
-    use std::fs::{File};
+    use std::fs::File;
 
     #[test]
     fn basic_au_test() {
         let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3".to_string();
         let p = parser::Parser::new().unwrap();
         let c = p.parse(agent);
-        println!("{:?}",c);
-        assert_eq!(Client {
-            user_agent: UserAgent {
-                family: "Mobile Safari".to_string(),
-                major: Some("5".to_string()),
-                minor: Some("1".to_string()),
-                patch: None,
+        println!("{:?}", c);
+        assert_eq!(
+            Client {
+                user_agent: UserAgent {
+                    family: "Mobile Safari".to_string(),
+                    major: Some("5".to_string()),
+                    minor: Some("1".to_string()),
+                    patch: None,
+                },
+                device: Device {
+                    family: "iPhone".to_string(),
+                    brand: Some("Apple".to_string()),
+                    model: Some("iPhone".to_string()),
+                    regex: Some("(iPhone)(?:;| Simulator;)".to_string()),
+                },
+                os: OS {
+                    family: "iOS".to_string(),
+                    major: Some("5".to_string()),
+                    minor: Some("1".to_string()),
+                    patch: Some("1".to_string()),
+                    patch_minor: None,
+                },
             },
-            device: Device {
-                family: "iPhone".to_string(),
-                brand: Some("Apple".to_string()),
-                model: Some("iPhone".to_string()),
-                regex: Some("(iPhone)(?:;| Simulator;)".to_string()),
-            },
-            os: OS {
-                family: "iOS".to_string(),
-                major: Some("5".to_string()),
-                minor: Some("1".to_string()),
-                patch: Some("1".to_string()),
-                patch_minor: None,
-            }
-        }, c);
+            c
+        );
     }
 
     #[test]
@@ -84,7 +87,8 @@ mod test {
             let uas = from_map(c, "user_agent_string").unwrap().as_str().unwrap();
             let client = p.parse(uas.to_string());
 
-            let family = compare_with_parsed(&Some(client.device.family.clone()), "family", c, &client);
+            let family =
+                compare_with_parsed(&Some(client.device.family.clone()), "family", c, &client);
             if family.is_some() {
                 return family;
             }
@@ -121,7 +125,12 @@ mod test {
             let uas = from_map(c, "user_agent_string").unwrap().as_str().unwrap();
             let client = p.parse(uas.to_string());
 
-            let family = compare_with_parsed(&Some(client.user_agent.family.clone()), "family", c, &client);
+            let family = compare_with_parsed(
+                &Some(client.user_agent.family.clone()),
+                "family",
+                c,
+                &client,
+            );
             if family.is_some() {
                 return family;
             }
@@ -184,7 +193,8 @@ mod test {
                 return patch;
             }
 
-            let patch_minor = compare_with_parsed(&client.os.patch_minor, "patch_minor", c, &client);
+            let patch_minor =
+                compare_with_parsed(&client.os.patch_minor, "patch_minor", c, &client);
             if patch_minor.is_some() {
                 return patch_minor;
             }
@@ -199,13 +209,21 @@ mod test {
         assert_eq!(0, failed.len());
     }
 
-    fn compare_with_parsed(actual: &Option<String>, mapkey: &str, c: &Yaml, client: &Client) -> Option<String> {
+    fn compare_with_parsed(
+        actual: &Option<String>,
+        mapkey: &str,
+        c: &Yaml,
+        client: &Client,
+    ) -> Option<String> {
         let opt = from_map(c, mapkey).unwrap();
         if !opt.is_null() {
             let value = opt.as_str().unwrap().to_string();
             let parsed = actual.clone().unwrap_or(String::new());
-            if parsed != value { 
-                return Some(format!("{} does not match: {:?}, actual: {:?}", mapkey, c, client));
+            if parsed != value {
+                return Some(format!(
+                    "{} does not match: {:?}, actual: {:?}",
+                    mapkey, c, client
+                ));
             }
         }
         None

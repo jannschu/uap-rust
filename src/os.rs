@@ -1,4 +1,4 @@
-use yaml_rust::{Yaml};
+use yaml_rust::Yaml;
 use yaml;
 use regex::Regex;
 
@@ -24,7 +24,7 @@ pub struct OSParser {
 
 impl OSParser {
     pub fn from_yaml(y: &Yaml) -> Option<OSParser> {
-            yaml::string_from_map(y, "regex")
+        yaml::string_from_map(y, "regex")
             .map(|r| r.replace(r"\-", r"-"))
             .map(|r| r.replace(r"\ ", r" "))
             .map(|r| r.replace(r"\/", r"/"))
@@ -41,19 +41,24 @@ impl OSParser {
 
     pub fn parse(&self, agent: String) -> Option<OS> {
         self.regex.captures(&agent[..]).map(|c| {
-            let family = self.family.clone()
+            let family = self.family
+                .clone()
                 .and_then(|f| c.at(1).map(|a| f.replace("$1", a)))
                 .unwrap_or(c.at(1).unwrap_or("Other").to_string());
-            let major = self.major.clone()
+            let major = self.major
+                .clone()
                 .and_then(|f| c.at(2).map(|a| f.replace("$2", a)))
                 .or(c.at(2).map(String::from));
-            let minor = self.minor.clone()
+            let minor = self.minor
+                .clone()
                 .and_then(|f| c.at(3).map(|a| f.replace("$3", a)))
                 .or(c.at(3).map(String::from));
-            let patch = self.patch.clone()
+            let patch = self.patch
+                .clone()
                 .and_then(|f| c.at(4).map(|a| f.replace("$4", a)))
                 .or(c.at(4).map(String::from));
-            let patch_minor = self.patch_minor.clone()
+            let patch_minor = self.patch_minor
+                .clone()
                 .and_then(|f| c.at(5).map(|a| f.replace("$5", a)))
                 .or(c.at(5).map(String::from));
 

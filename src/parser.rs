@@ -1,17 +1,16 @@
 use std::io::prelude::*;
-use std::fs::{File};
-use yaml_rust::{YamlLoader};
+use std::fs::File;
+use yaml_rust::YamlLoader;
 
-use client::{Client};
+use client::Client;
 use ua::{UserAgent, UserAgentParser};
 use device::{Device, DeviceParser};
-use os::{OS, OSParser};
+use os::{OSParser, OS};
 use result::*;
 use yaml;
 
 ///The `Parser` type, used for parsing user agent strings into `Client` structs.
-pub struct Parser {
-}
+pub struct Parser {}
 
 lazy_static! {
     static ref UAP: Vec<UserAgentParser> =  {
@@ -36,7 +35,6 @@ lazy_static! {
 }
 
 impl Parser {
-
     ///Constructs a `Parser` from a file path to a regexes file.
     ///
     ///See [uap-core](https://github.com/ua-parser/uap-core/) documentation for information on the
@@ -54,8 +52,7 @@ impl Parser {
     ///format.
     pub fn from_str(_: &str) -> Result<Parser> {
         //Parse the yaml.
-        let p = Parser {
-        };
+        let p = Parser {};
         Ok(p)
     }
 
@@ -64,8 +61,8 @@ impl Parser {
     ///See [uap-core](https://github.com/ua-parser/uap-core/) documentation for information on the
     ///format.
     pub fn new() -> Result<Parser> {
-         let s = include_str!("uap-core/regexes.yaml");
-         Parser::from_str(&s)
+        let s = include_str!("uap-core/regexes.yaml");
+        Parser::from_str(&s)
     }
 
     ///Parses a user agent string into a `Client` struct.
@@ -74,13 +71,12 @@ impl Parser {
         //we use a default value.
 
         let ua = UAP.iter().filter_map(|u| u.parse(agent.clone())).next();
-        let u = ua.unwrap_or(
-            UserAgent {
-                family: "Other".to_string(),
-                major: None,
-                minor: None,
-                patch: None,
-            });
+        let u = ua.unwrap_or(UserAgent {
+            family: "Other".to_string(),
+            major: None,
+            minor: None,
+            patch: None,
+        });
         let dev = DP.iter().filter_map(|d| d.parse(agent.clone())).next();
         let d = dev.unwrap_or(Device {
             family: "Other".to_string(),
