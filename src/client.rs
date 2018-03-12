@@ -1,11 +1,10 @@
-use ua;
-use os;
-use device;
+use parser;
 
 ///`Client` struct, contains the parsed user agent information.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Client {
-    pub user_agent: ua::UserAgent,
-    pub os: os::OS,
-    pub device: device::Device,
+    pub(crate) user_agent: String,
+    pub browser: parser::Browser,
+    pub os: parser::OS,
+    pub device: parser::Device,
 }

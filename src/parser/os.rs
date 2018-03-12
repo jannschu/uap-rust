@@ -14,8 +14,20 @@ pub struct OS {
     pub patch_minor: Option<String>,
 }
 
+impl OS {
+    pub(crate) fn new() -> OS {
+        OS {
+            family: "Other".to_string(),
+            major: None,
+            minor: None,
+            patch: None,
+            patch_minor: None,
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct OSParser {
+pub(super) struct OSParser {
     pub regex: Regex,
     pub family: Option<String>,
     pub major: Option<String>,
@@ -39,8 +51,8 @@ impl OSParser {
             })
     }
 
-    pub fn parse(&self, agent: String) -> Option<OS> {
-        self.regex.captures(&agent).map(|c| {
+    pub fn parse(&self, agent: &str) -> Option<OS> {
+        self.regex.captures(agent).map(|c| {
             let family = self.family
                 .clone()
                 .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(&f, &c))

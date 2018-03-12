@@ -6,28 +6,39 @@ use {build_uap_regexp, get_or_none};
 
 ///`UserAgent` contains the user agent information.
 #[derive(Debug, PartialEq, Eq)]
-pub struct UserAgent {
+pub struct Browser {
     pub family: String,
     pub major: Option<String>,
     pub minor: Option<String>,
     pub patch: Option<String>,
 }
 
-#[derive(Debug)]
-pub struct UserAgentParser {
-    pub regex: Regex,
-    pub family: Option<String>,
-    pub major: Option<String>,
-    pub minor: Option<String>,
-    pub patch: Option<String>,
+impl Browser {
+    pub(crate) fn new() -> Browser {
+        Browser {
+            family: "Other".to_string(),
+            major: None,
+            minor: None,
+            patch: None,
+        }
+    }
 }
 
-impl UserAgentParser {
-    pub fn from_yaml(y: &Yaml) -> Option<UserAgentParser> {
+#[derive(Debug)]
+pub(super) struct BrowserParser {
+    regex: Regex,
+    family: Option<String>,
+    major: Option<String>,
+    minor: Option<String>,
+    patch: Option<String>,
+}
+
+impl BrowserParser {
+    pub fn from_yaml(y: &Yaml) -> Option<BrowserParser> {
         let regex_flag = yaml::string_from_map(y, "regex_flag");
         yaml::string_from_map(y, "regex")
             .and_then(|r| build_uap_regexp(&r, regex_flag.as_ref()).ok())
-            .map(|r| UserAgentParser {
+            .map(|r| BrowserParser {
                 regex: r,
                 family: yaml::string_from_map(y, "family_replacement"),
                 major: yaml::string_from_map(y, "v1_replacement"),
@@ -36,8 +47,8 @@ impl UserAgentParser {
             })
     }
 
-    pub fn parse(&self, agent: String) -> Option<UserAgent> {
-        self.regex.captures(&agent).map(|c| {
+    pub fn parse(&self, agent: &str) -> Option<Browser> {
+        self.regex.captures(agent).map(|c| {
             let family = self.family
                 .clone()
                 .and_then(|f| {
@@ -54,7 +65,7 @@ impl UserAgentParser {
             let minor = self.minor.clone().or_else(|| get_or_none(&c, 3));
             let patch = self.patch.clone().or_else(|| get_or_none(&c, 4));
 
-            UserAgent {
+            Browser {
                 family: family,
                 major: major,
                 minor: minor,

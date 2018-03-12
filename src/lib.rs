@@ -24,9 +24,6 @@ extern crate lazy_static;
 
 pub mod parser;
 pub mod client;
-pub mod ua;
-pub mod os;
-pub mod device;
 mod result;
 mod yaml;
 
@@ -102,57 +99,55 @@ fn test_regex() {
 #[cfg(test)]
 mod test {
     use parser;
-    use client::Client;
-    use ua::UserAgent;
-    use device::Device;
-    use os::OS;
+
     use yaml::*;
     use yaml_rust::{Yaml, YamlLoader};
     use std::io::prelude::*;
     use std::fs::File;
 
     #[test]
-    fn test_basic_au() {
+    fn test_simple_case() {
         let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3".to_string();
-        let p = parser::Parser::new().unwrap();
-        let c = p.parse(agent);
+        let client = parser::Parser::parse(&agent);
         assert_eq!(
-            Client {
-                user_agent: UserAgent {
-                    family: "Mobile Safari".to_string(),
-                    major: Some("5".to_string()),
-                    minor: Some("1".to_string()),
-                    patch: None,
-                },
-                device: Device {
-                    family: "iPhone".to_string(),
-                    brand: Some("Apple".to_string()),
-                    model: Some("iPhone".to_string()),
-                    regex: Some("(iPhone)(?:;| Simulator;)".to_string()),
-                },
-                os: OS {
-                    family: "iOS".to_string(),
-                    major: Some("5".to_string()),
-                    minor: Some("1".to_string()),
-                    patch: Some("1".to_string()),
-                    patch_minor: None,
-                },
-            },
-            c
+            client.browser,
+            parser::Browser {
+                family: "Mobile Safari".to_string(),
+                major: Some("5".to_string()),
+                minor: Some("1".to_string()),
+                patch: None,
+            }
+        );
+        assert_eq!(
+            client.device,
+            parser::Device {
+                family: "iPhone".to_string(),
+                brand: Some("Apple".to_string()),
+                model: Some("iPhone".to_string()),
+                regex: Some("(iPhone)(?:;| Simulator;)".to_string()),
+            }
+        );
+        assert_eq!(
+            client.os,
+            parser::OS {
+                family: "iOS".to_string(),
+                major: Some("5".to_string()),
+                minor: Some("1".to_string()),
+                patch: Some("1".to_string()),
+                patch_minor: None,
+            }
         );
     }
 
     #[test]
     fn test_device() {
-        let p = parser::Parser::new().unwrap();
-        assert!(!parser::DP.is_empty());
-        let cases = load_cases("src/uap-core/tests/test_device.yaml");
+        let cases = load_test_data("uap-core/tests/test_device.yaml");
         for case in cases.iter() {
             let uas = from_map(case, "user_agent_string")
                 .unwrap()
                 .as_str()
                 .unwrap();
-            let client = p.parse(uas.to_string());
+            let client = parser::Parser::parse(uas);
             let dev = client.device;
             assert_eq!(Some(dev.family), case_get(&case, "family"));
             assert_eq!(dev.brand, case_get(&case, "brand"));
@@ -162,32 +157,27 @@ mod test {
 
     #[test]
     fn test_user_agent() {
-        let p = parser::Parser::new().unwrap();
-        assert!(!parser::UAP.is_empty());
-        let cases = load_cases("src/uap-core/tests/test_ua.yaml");
+        let cases = load_test_data("uap-core/tests/test_ua.yaml");
         for case in cases.iter() {
             let uas = from_map(case, "user_agent_string")
                 .unwrap()
                 .as_str()
                 .unwrap();
-            let client = p.parse(uas.to_string());
-            let ua = client.user_agent;
-            println!("{}", uas);
-            assert_eq!(Some(ua.family), case_get(&case, "family"));
-            assert_eq!(ua.major, case_get(&case, "major"));
-            assert_eq!(ua.minor, case_get(&case, "minor"));
-            assert_eq!(ua.patch, case_get(&case, "patch"));
+            let client = parser::Parser::parse(uas);
+            let browser = client.browser;
+            assert_eq!(Some(browser.family), case_get(&case, "family"));
+            assert_eq!(browser.major, case_get(&case, "major"));
+            assert_eq!(browser.minor, case_get(&case, "minor"));
+            assert_eq!(browser.patch, case_get(&case, "patch"));
         }
     }
 
     #[test]
     fn test_os() {
-        let p = parser::Parser::new().unwrap();
-        assert!(!parser::OSP.is_empty());
-        let cases = load_cases("src/uap-core/tests/test_os.yaml");
+        let cases = load_test_data("uap-core/tests/test_os.yaml");
         for case in cases.iter() {
             let uas = case["user_agent_string"].as_str().unwrap();
-            let client = p.parse(uas.to_string());
+            let client = parser::Parser::parse(uas);
             let os = client.os;
             assert_eq!(Some(os.family), case_get(&case, "family"));
             assert_eq!(os.major, case_get(&case, "major"));
@@ -199,7 +189,6 @@ mod test {
 
     fn case_get<'a>(yaml: &'a Yaml, key: &str) -> Option<String> {
         let val = from_map(yaml, key).unwrap();
-        println!("key={} val={:?}", key, val);
         if val.is_null() {
             None
         } else {
@@ -207,7 +196,7 @@ mod test {
         }
     }
 
-    fn load_cases(path: &str) -> Vec<Yaml> {
+    fn load_test_data(path: &str) -> Vec<Yaml> {
         let mut test_file = File::open(path).unwrap();
         let mut yaml_str = String::new();
         let _ = test_file.read_to_string(&mut yaml_str).unwrap();

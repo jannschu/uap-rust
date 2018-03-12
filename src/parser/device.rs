@@ -13,8 +13,19 @@ pub struct Device {
     pub regex: Option<String>,
 }
 
+impl Device {
+    pub(crate) fn new() -> Device {
+        Device {
+            family: "Other".to_string(),
+            model: None,
+            brand: None,
+            regex: None,
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct DeviceParser {
+pub(super) struct DeviceParser {
     pub regex: Regex,
     pub family: Option<String>,
     pub brand: Option<String>,
@@ -34,8 +45,8 @@ impl DeviceParser {
             })
     }
 
-    pub fn parse(&self, agent: String) -> Option<Device> {
-        self.regex.captures(&agent).map(|c| {
+    pub fn parse(&self, agent: &str) -> Option<Device> {
+        self.regex.captures(agent).map(|c| {
             let family = self.family
                 .clone()
                 .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(&f, &c))

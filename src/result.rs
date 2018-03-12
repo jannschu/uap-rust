@@ -1,13 +1,10 @@
-use std::result;
 use std::error;
 use std::fmt;
 use std::io;
 use yaml_rust;
 
-pub type Result<T> = result::Result<T, Error>;
-
 #[derive(Debug)]
-pub struct Error {
+struct Error {
     message: String,
 }
 
