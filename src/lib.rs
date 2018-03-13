@@ -1,117 +1,120 @@
-/*!
-#ua-parser for rust
-This is a user agent parser for Rust based on
-[ua-parser](https://github.com/ua-parser).
-
-##Usage example
-
-```rust
-use uap_rust::parser::Parser;
-let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3".to_string();
-let p = Parser::new().unwrap();
-let c = p.parse(agent);
-
-println!("{:?}",c);
- //Output: Client { user_agent: UserAgent { family: "Mobile Safari", major: Some("5"), minor: Some("1"), patch: None }, os: OS { family: "iOS", major: Some("5"), minor: Some("1"), patch: Some("1"), patch_minor: None }, device: Device { family: "iPhone", brand: Some("Apple"), model: Some("iPhone") } }
-```
-*/
-
+///! # ua-parser for rust
+///! This is a user agent parser for Rust based on
+///! [ua-parser](https://github.com/ua-parser).
+///!
+///! ## Usage example
+///!
+///! ```rust
+///! use uap_rust::Client;
+///! let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3";
+///! let client = Client::new(agent);
+///!
+///! let browser = client.browser();
+///! let os = client.os();
+///! let device = client.device();
+///!
+///! println!("{:?}", browser);
+///! println!("{:?}", os);
+///! println!("{:?}", device);
+///! ```
 extern crate regex;
-extern crate yaml_rust;
 
 #[macro_use]
 extern crate lazy_static;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+extern crate yaml_rust;
 
-pub mod parser;
-pub mod client;
+mod parser;
+mod client;
 mod result;
-mod yaml;
 
-use regex::{Captures, Error, Regex, RegexBuilder};
+pub use client::Client;
 
-lazy_static! {
-    static ref RE_REPLACE: Regex = Regex::new(r"\$\d+").unwrap();
+/// `Browser` contains browser information.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Browser {
+    pub family: String,
+    pub major: Option<String>,
+    pub minor: Option<String>,
+    pub patch: Option<String>,
 }
 
-fn replace_matches(s: &str, m: &Captures) -> Option<String> {
-    let s = RE_REPLACE
-        .replace_all(&s, |c: &Captures| {
-            if let Some(i) = c[0][1..].parse().ok() {
-                m.get(i).map(|x| x.as_str()).unwrap_or("")
-            } else {
-                ""
-            }.to_string()
-        })
-        .trim()
-        .to_string();
-    if s.is_empty() {
-        None
-    } else {
-        Some(s)
-    }
+/// `OS` contains the operating system information from the user agent.
+#[derive(Debug, PartialEq, Eq)]
+pub struct OS {
+    pub family: String,
+    pub major: Option<String>,
+    pub minor: Option<String>,
+    pub patch: Option<String>,
+    pub patch_minor: Option<String>,
 }
 
-fn get_or_none(c: &Captures, i: usize) -> Option<String> {
-    if let Some(group) = c.get(i) {
-        let s = group.as_str().to_string();
-        if s.is_empty() {
-            None
-        } else {
-            Some(s)
+/// `Device` contains the device information from the user agent.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Device {
+    pub family: String,
+    pub brand: Option<String>,
+    pub model: Option<String>,
+    pub regex: Option<String>,
+}
+
+impl Default for Browser {
+    fn default() -> Browser {
+        Browser {
+            family: "Other".to_string(),
+            major: None,
+            minor: None,
+            patch: None,
         }
-    } else {
-        None
     }
 }
 
-fn build_uap_regexp(pattern: &str, flags: Option<&String>) -> Result<Regex, Error> {
-    let mut pattern = pattern
-        .replace(r"\ ", r" ")
-        .replace(r"\/", r"/")
-        .replace(r"\!", r"!");
-    if let Some(flags) = flags {
-        pattern = format!("(?{}){}", flags, pattern);
+impl Default for Device {
+    fn default() -> Device {
+        Device {
+            family: "Other".to_string(),
+            model: None,
+            brand: None,
+            regex: None,
+        }
     }
-    let mut builder = RegexBuilder::new(&pattern);
-    // We need to increase this limit for the bot
-    // patterns used by uap-core.
-    // Fixed by https://github.com/ua-parser/uap-core/pull/62.
-    builder.nest_limit(100);
-    builder.build()
 }
 
-#[test]
-fn test_replace_matches() {
-    let re = Regex::new(r"Ok (\d+) (\d+)").unwrap();
-    let captures = re.captures("Ok 1 2").unwrap();
-    assert_eq!(
-        replace_matches("$2 $1 $2", &captures),
-        Some("2 1 2".to_string())
-    );
-}
-
-#[test]
-fn test_regex() {
-    let re = build_uap_regexp(r#"(?:\/[A-Za-z0-9\.]+)? *([A-Za-z0-9 \-_\!\[\]:]*(?:[Aa]rchiver|[Ii]ndexer|[Ss]craper|[Bb]ot|[Ss]pider|[Cc]rawl[a-z]*))/(\d+)(?:\.(\d+)(?:\.(\d+))?)?"#, None).unwrap();
-    assert!(re.is_match(r"449 Overture-WebCrawler/3.8/Fresh (atw-crawler at fast dot no; http://fast.no/support/crawler.asp"));
+impl Default for OS {
+    fn default() -> OS {
+        OS {
+            family: "Other".to_string(),
+            major: None,
+            minor: None,
+            patch: None,
+            patch_minor: None,
+        }
+    }
 }
 
 #[cfg(test)]
-mod test {
-    use parser;
+mod yaml;
 
+#[cfg(test)]
+mod test {
     use yaml::*;
     use yaml_rust::{Yaml, YamlLoader};
     use std::io::prelude::*;
     use std::fs::File;
 
+    use client::Client;
+    use {Browser, Device, OS};
+
     #[test]
     fn test_simple_case() {
-        let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3".to_string();
-        let client = parser::Parser::parse(&agent);
+        let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3";
+        let mut client = Client::new(&agent);
         assert_eq!(
-            client.browser,
-            parser::Browser {
+            client.browser(),
+            &Browser {
                 family: "Mobile Safari".to_string(),
                 major: Some("5".to_string()),
                 minor: Some("1".to_string()),
@@ -119,8 +122,8 @@ mod test {
             }
         );
         assert_eq!(
-            client.device,
-            parser::Device {
+            client.device(),
+            &Device {
                 family: "iPhone".to_string(),
                 brand: Some("Apple".to_string()),
                 model: Some("iPhone".to_string()),
@@ -128,8 +131,8 @@ mod test {
             }
         );
         assert_eq!(
-            client.os,
-            parser::OS {
+            client.os(),
+            &OS {
                 family: "iOS".to_string(),
                 major: Some("5".to_string()),
                 minor: Some("1".to_string()),
@@ -147,9 +150,9 @@ mod test {
                 .unwrap()
                 .as_str()
                 .unwrap();
-            let client = parser::Parser::parse(uas);
-            let dev = client.device;
-            assert_eq!(Some(dev.family), case_get(&case, "family"));
+            let mut client = Client::new(uas);
+            let dev = client.device();
+            assert_eq!(Some(&dev.family), case_get(&case, "family").as_ref());
             assert_eq!(dev.brand, case_get(&case, "brand"));
             assert_eq!(dev.model, case_get(&case, "model"));
         }
@@ -163,9 +166,9 @@ mod test {
                 .unwrap()
                 .as_str()
                 .unwrap();
-            let client = parser::Parser::parse(uas);
-            let browser = client.browser;
-            assert_eq!(Some(browser.family), case_get(&case, "family"));
+            let mut client = Client::new(uas);
+            let browser = client.browser();
+            assert_eq!(Some(&browser.family), case_get(&case, "family").as_ref());
             assert_eq!(browser.major, case_get(&case, "major"));
             assert_eq!(browser.minor, case_get(&case, "minor"));
             assert_eq!(browser.patch, case_get(&case, "patch"));
@@ -177,9 +180,9 @@ mod test {
         let cases = load_test_data("uap-core/tests/test_os.yaml");
         for case in cases.iter() {
             let uas = case["user_agent_string"].as_str().unwrap();
-            let client = parser::Parser::parse(uas);
-            let os = client.os;
-            assert_eq!(Some(os.family), case_get(&case, "family"));
+            let mut client = Client::new(uas);
+            let os = client.os();
+            assert_eq!(Some(&os.family), case_get(&case, "family").as_ref());
             assert_eq!(os.major, case_get(&case, "major"));
             assert_eq!(os.minor, case_get(&case, "minor"));
             assert_eq!(os.patch, case_get(&case, "patch"));
@@ -192,7 +195,7 @@ mod test {
         if val.is_null() {
             None
         } else {
-            val.as_str().map(|c| c.to_string())
+            val.as_str().map(|v| v.to_string() )
         }
     }
 
