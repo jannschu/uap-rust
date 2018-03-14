@@ -1,5 +1,7 @@
 use std::str::FromStr;
+use std::borrow::Cow;
 use std::string::ParseError;
+
 use regex::{Captures, Regex, RegexBuilder};
 use regex;
 
@@ -8,24 +10,24 @@ use serde::de::Error;
 
 use rmps;
 
-use {Browser, Device, OS};
+use {Browser, Device, OS, DEFAULT_NAME};
 
 static UA_PARSER_REGEX_DATA: &'static [u8] = include_bytes!("../resources/regexes.msgpack");
 
 lazy_static! {
-    pub(super) static ref UA_PARSER_REGEXES: UARegexes = {
+    pub(super) static ref UA_PARSER_REGEXES: UARegexes<'static> = {
         rmps::from_slice(UA_PARSER_REGEX_DATA).unwrap()
     };
 }
 
 #[derive(Debug, Deserialize)]
-pub(super) struct UARegexes {
-    #[serde(rename = "b")]
-    browser_parsers: Vec<UABrowserRegex>,
-    #[serde(rename = "d")]
-    device_parsers: Vec<UADeviceRegex>,
-    #[serde(rename = "o")]
-    os_parsers: Vec<UAOSRegex>,
+pub(super) struct UARegexes<'a> {
+    #[serde(borrow, rename = "b")]
+    browser_parsers: Vec<UABrowserRegex<'a>>,
+    #[serde(borrow, rename = "d")]
+    device_parsers: Vec<UADeviceRegex<'a>>,
+    #[serde(borrow, rename = "o")]
+    os_parsers: Vec<UAOSRegex<'a>>,
 }
 
 macro_rules! derive_with_regex_field {
@@ -39,34 +41,34 @@ macro_rules! derive_with_regex_field {
     	}
     ) => {
     	$(#[$meta])*
-    	struct $name {
+    	struct $name<'a> {
     		regex: Regex,
     		$($field: $field_type),*
     	}
 
 
-    	impl PartialEq for $name {
+    	impl<'a> PartialEq for $name<'a> {
     		fn eq(&self, other: &$name) -> bool {
     			$(self.$field == other.$field && )* 
     			self.regex.as_str() == other.regex.as_str()
     		}
     	}
 
-    	impl Eq for $name { }
+    	impl<'a> Eq for $name<'a> { }
 
     	$(#[$meta])*
     	#[derive(Deserialize)]
     	// Why not call this Raw and use macro hygene?
-	    struct $name_raw {
-	    	#[serde(rename="r")]
-	    	regex: String,
+	    struct $name_raw<'a> {
+	    	#[serde(borrow, rename="r")]
+	    	regex: &'a str,
 	    	$(
 	    		$(#[$field_meta])*
 	    		$field: $field_type
 	    	),*
 	    }
 
-    	impl<'de: 'a, 'a> Deserialize<'de> for $name {
+    	impl<'de: 'a, 'a> Deserialize<'de> for $name<'a> {
     	    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     	        where D: Deserializer<'de>
     	    {
@@ -101,70 +103,84 @@ fn compile_regex(pattern: &str) -> Result<Regex, regex::Error> {
 derive_with_regex_field! {
     #[derive(Debug)]
     struct UABrowserRegex UABrowserRegexRaw {
-        #[serde(default, rename="f")]
-        family_replacement: Option<String>,
-        #[serde(default, rename="1")]
-        v1_replacement: Option<String>,
-        #[serde(default, rename="2")]
-        v2_replacement: Option<String>,
-        #[serde(default, rename="3")]
-        v3_replacement: Option<String>
+        #[serde(borrow, default, rename="f")]
+        family_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="1")]
+        v1_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="2")]
+        v2_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="3")]
+        v3_replacement: Option<&'a str>
     }
 }
 
 derive_with_regex_field! {
     #[derive(Debug)]
     struct UAOSRegex UAOSRegexRaw {
-        #[serde(default, rename="o")]
-        os_replacement: Option<String>,
-        #[serde(default, rename="1")]
-        os_v1_replacement: Option<String>,
-        #[serde(default, rename="2")]
-        os_v2_replacement: Option<String>,
-        #[serde(default, rename="3")]
-        os_v3_replacement: Option<String>,
-        #[serde(default, rename="4")]
-        os_v4_replacement: Option<String>
+        #[serde(borrow, default, rename="o")]
+        os_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="1")]
+        os_v1_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="2")]
+        os_v2_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="3")]
+        os_v3_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="4")]
+        os_v4_replacement: Option<&'a str>
     }
 }
 
 derive_with_regex_field! {
     #[derive(Debug)]
     struct UADeviceRegex UADeviceRegexRaw {
-        #[serde(default, rename="d")]
-        device_replacement: Option<String>,
-        #[serde(default, rename="b")]
-        brand_replacement: Option<String>,
-        #[serde(default, rename="m")]
-        model_replacement: Option<String>
+        #[serde(borrow, default, rename="d")]
+        device_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="b")]
+        brand_replacement: Option<&'a str>,
+        #[serde(borrow, default, rename="m")]
+        model_replacement: Option<&'a str>
     }
 }
 
-lazy_static! {
-    static ref RE_REPLACE: Regex = Regex::new(r"\$\d+").unwrap();
-}
+fn replace_matches<'a: 'c, 'b: 'c, 'c>(s: &'a str, caps: &'b Captures) -> Option<Cow<'c, str>> {
+	let s = match s.as_bytes().contains(&b'$') {
+        true => {
+        	let mut dst = String::with_capacity(2 * s.len());
+        	caps.expand(s, &mut dst);
+        	Cow::Owned(dst)
+        }
+        false => Cow::Borrowed(s),
+    };
 
-fn replace_matches(s: &str, m: &Captures) -> Option<String> {
-    let s = RE_REPLACE
-        .replace_all(&s, |c: &Captures| {
-            if let Some(i) = c[0][1..].parse().ok() {
-                m.get(i).map(|x| x.as_str()).unwrap_or("")
-            } else {
-                ""
-            }.to_string()
-        })
-        .trim()
-        .to_string();
+    // FIXME: Can this be improved with non-lexical
+    // lifetimes (and the trim method)?
+    // cf. https://github.com/rust-lang/rust-roadmap/issues/16
+    // Or `move into guards`?
+    
     if s.is_empty() {
-        None
-    } else {
-        Some(s)
+    	return None;
+    }
+
+    let start = s.find(|c: char| c != ' ' ).unwrap_or(s.len());
+    let end = s.rfind(|c: char| c != ' ' ).unwrap_or(s.len() - 1) + 1;
+
+    if start == end {
+    	return None;
+    }
+
+    if start == 0 && end == s.len() {
+    	return Some(s);
+    }
+
+    match s {
+    	Cow::Borrowed(s) => Some(Cow::Borrowed(&s[start..end])),
+    	Cow::Owned(s) => Some(Cow::Owned(s[start..end].to_string())),
     }
 }
 
-fn get_or_none(c: &Captures, i: usize) -> Option<String> {
+fn get_or_none<'a>(c: &'a Captures, i: usize) -> Option<Cow<'a, str>> {
     if let Some(group) = c.get(i) {
-        let s = group.as_str().to_string();
+        let s = Cow::Borrowed(group.as_str());
         if s.is_empty() {
             None
         } else {
@@ -175,90 +191,80 @@ fn get_or_none(c: &Captures, i: usize) -> Option<String> {
     }
 }
 
-impl UABrowserRegex {
+impl<'a> UABrowserRegex<'a> {
     fn parse(&self, agent: &str) -> Option<Browser> {
         self.regex.captures(agent).map(|c| {
             let family = self.family_replacement
-            	.clone()
                 .and_then(|f| {
                     if let Some(group1) = c.get(1) {
-                        Some(f.replace("$1", group1.as_str()))
+                        Some(Cow::Owned(f.replace("$1", group1.as_str())))
                     } else {
-                        Some(f)
+                        Some(Cow::Borrowed(f))
                     }
                 })
-                .or_else(|| c.get(1).map(|c| c.as_str().to_string()))
-                .unwrap_or_else(|| "Other".to_string());
+                .or_else(|| c.get(1).map(|c| Cow::Borrowed(c.as_str())))
+                .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
 
             let major = self.v1_replacement
-            	.clone()
+            	.map(|v1| Cow::Borrowed(v1))
                 .or_else(|| get_or_none(&c, 2));
             let minor = self.v2_replacement
-                .clone()
+                .map(|v2| Cow::Borrowed(v2))
                 .or_else(|| get_or_none(&c, 3));
             let patch = self.v3_replacement
-                .clone()
+                .map(|v2| Cow::Borrowed(v2))
                 .or_else(|| get_or_none(&c, 4));
 
             Browser {
-                family: family,
-                major: major,
-                minor: minor,
-                patch: patch,
+                family: (*family).to_string(),
+                major: major.map(|x| (*x).to_string()),
+                minor: minor.map(|x| (*x).to_string()),
+                patch: patch.map(|x| (*x).to_string()),
             }
         })
     }
 }
 
-impl UAOSRegex {
+impl<'a> UAOSRegex<'a> {
     fn parse(&self, agent: &str) -> Option<OS> {
         self.regex.captures(agent).map(|c| {
-            let family = self.os_replacement
-                .clone()
+            let family: Cow<str> = self.os_replacement
                 .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(&f, &c))
-                .unwrap_or_else(|| "Other".to_string());
+                .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
             let major = self.os_v1_replacement
-                .clone()
-                .map_or_else(|| get_or_none(&c, 2), |m| replace_matches(&m, &c));
+                .map_or_else(|| get_or_none(&c, 2), |m| replace_matches(m, &c));
             let minor = self.os_v2_replacement
-                .clone()
-                .map_or_else(|| get_or_none(&c, 3), |m| replace_matches(&m, &c));
+                .map_or_else(|| get_or_none(&c, 3), |m| replace_matches(m, &c));
             let patch = self.os_v3_replacement
-                .clone()
-                .map_or_else(|| get_or_none(&c, 4), |p| replace_matches(&p, &c));
+                .map_or_else(|| get_or_none(&c, 4), |p| replace_matches(p, &c));
             let patch_minor = self.os_v4_replacement
-                .clone()
-                .map_or_else(|| get_or_none(&c, 5), |p| replace_matches(&p, &c));
+                .map_or_else(|| get_or_none(&c, 5), |p| replace_matches(p, &c));
 
             OS {
-                family: family,
-                major: major,
-                minor: minor,
-                patch: patch,
-                patch_minor: patch_minor,
+                family: (*family).to_string(),
+                major: major.map(|x| (*x).to_string()),
+                minor: minor.map(|x| (*x).to_string()),
+                patch: patch.map(|x| (*x).to_string()),
+                patch_minor: patch_minor.map(|x| (*x).to_string()),
             }
         })
     }
 }
 
-impl UADeviceRegex {
+impl<'a> UADeviceRegex<'a> {
     fn parse(&self, agent: &str) -> Option<Device> {
         self.regex.captures(agent).map(|c| {
             let family = self.device_replacement
-                .clone()
                 .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(&f, &c))
-                .unwrap_or_else(|| "Other".to_string());
+                .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
             let brand = self.brand_replacement
-                .clone()
-            	.and_then(|m| replace_matches(&m, &c));
+            	.and_then(|m| replace_matches(m, &c));
             let model = self.model_replacement
-                .clone()
-                .map_or_else(|| get_or_none(&c, 1), |m| replace_matches(&m, &c));
+                .map_or_else(|| get_or_none(&c, 1), |m| replace_matches(m, &c));
             Device {
-                family: family,
-                brand: brand,
-                model: model,
-                regex: Some(format!("{}", self.regex)),
+                family: (*family).to_string(),
+                brand: brand.map(|x| (*x).to_string()),
+                model: model.map(|x| (*x).to_string()),
             }
         })
     }
@@ -306,7 +312,7 @@ fn test_replace_matches() {
     let captures = re.captures("Ok 1 2").unwrap();
     assert_eq!(
         replace_matches("$2 $1 $2", &captures),
-        Some("2 1 2".to_string())
+        Some(Cow::Borrowed("2 1 2"))
     );
 }
 

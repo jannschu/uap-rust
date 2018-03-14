@@ -58,13 +58,14 @@ pub struct Device {
     pub family: String,
     pub brand: Option<String>,
     pub model: Option<String>,
-    pub regex: Option<String>,
 }
+
+static DEFAULT_NAME: &str = "Other";
 
 impl Default for Browser {
     fn default() -> Browser {
         Browser {
-            family: "Other".to_string(),
+            family: DEFAULT_NAME.to_string(),
             major: None,
             minor: None,
             patch: None,
@@ -75,10 +76,9 @@ impl Default for Browser {
 impl Default for Device {
     fn default() -> Device {
         Device {
-            family: "Other".to_string(),
+            family: DEFAULT_NAME.to_string(),
             model: None,
             brand: None,
-            regex: None,
         }
     }
 }
@@ -86,7 +86,7 @@ impl Default for Device {
 impl Default for OS {
     fn default() -> OS {
         OS {
-            family: "Other".to_string(),
+            family: DEFAULT_NAME.to_string(),
             major: None,
             minor: None,
             patch: None,
@@ -127,7 +127,6 @@ mod test {
                 family: "iPhone".to_string(),
                 brand: Some("Apple".to_string()),
                 model: Some("iPhone".to_string()),
-                regex: Some("(iPhone)(?:;| Simulator;)".to_string()),
             }
         );
         assert_eq!(
