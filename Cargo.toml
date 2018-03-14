@@ -17,6 +17,3 @@ regex = "0.2.9"
 rmp-serde = "0.13"
 serde = "1.0"
 serde_derive = "1.0"
-
-[dev-dependencies]
-yaml-rust = "0.4"

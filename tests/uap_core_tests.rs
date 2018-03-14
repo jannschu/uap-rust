@@ -1,16 +1,15 @@
+#[macro_use]
+extern crate lazy_static;
+extern crate rmp_serde as rmps;
+#[macro_use]
+extern crate serde_derive;
+
 extern crate uap_rust;
-extern crate yaml_rust;
-
-mod yaml;
-
-use yaml::*;
-use yaml_rust::{Yaml, YamlLoader};
-use std::io::prelude::*;
-use std::fs::File;
 
 use uap_rust::{Browser, Client, Device, OS};
 
-use std::borrow::Cow;
+mod test_data;
+
 use std::borrow::Cow::Borrowed;
 
 #[test]
@@ -48,66 +47,30 @@ fn test_simple_case() {
 
 #[test]
 fn test_device() {
-    let cases = load_test_data("uap-core/tests/test_device.yaml");
-    for case in cases.iter() {
-        let uas = from_map(case, "user_agent_string")
-            .unwrap()
-            .as_str()
-            .unwrap();
+    let cases = test_data::parse_device_test_cases();
+    for &(uas, ref test_device) in cases.iter() {
         let client = Client::new(uas);
         let dev = client.device();
-        assert_eq!(Some(&dev.family), case_get(&case, "family").as_ref());
-        assert_eq!(dev.brand, case_get(&case, "brand"));
-        assert_eq!(dev.model, case_get(&case, "model"));
+        assert_eq!(dev, test_device);
     }
 }
 
 #[test]
-fn test_user_agent() {
-    let cases = load_test_data("uap-core/tests/test_ua.yaml");
-    for case in cases.iter() {
-        let uas = from_map(case, "user_agent_string")
-            .unwrap()
-            .as_str()
-            .unwrap();
+fn test_browser() {
+    let cases = test_data::parse_browser_test_cases();
+    for &(uas, ref test_browser) in cases.iter() {
         let client = Client::new(uas);
         let browser = client.browser();
-        assert_eq!(Some(&browser.family), case_get(&case, "family").as_ref());
-        assert_eq!(browser.major, case_get(&case, "major"));
-        assert_eq!(browser.minor, case_get(&case, "minor"));
-        assert_eq!(browser.patch, case_get(&case, "patch"));
+        assert_eq!(browser, test_browser);
     }
 }
 
 #[test]
 fn test_os() {
-    let cases = load_test_data("uap-core/tests/test_os.yaml");
-    for case in cases.iter() {
-        let uas = case["user_agent_string"].as_str().unwrap();
+    let cases = test_data::parse_os_test_cases();
+    for &(uas, ref test_os) in cases.iter() {
         let client = Client::new(uas);
         let os = client.os();
-        assert_eq!(Some(&os.family), case_get(&case, "family").as_ref());
-        assert_eq!(os.major, case_get(&case, "major"));
-        assert_eq!(os.minor, case_get(&case, "minor"));
-        assert_eq!(os.patch, case_get(&case, "patch"));
-        assert_eq!(os.patch_minor, case_get(&case, "patch_minor"));
+        assert_eq!(os, test_os);
     }
-}
-
-fn case_get<'a>(yaml: &'a Yaml, key: &str) -> Option<Cow<'a, str>> {
-    let val = from_map(yaml, key).unwrap();
-    if val.is_null() {
-        None
-    } else {
-        val.as_str().map(|v| Borrowed(v))
-    }
-}
-
-fn load_test_data(path: &str) -> Vec<Yaml> {
-    let mut test_file = File::open(path).unwrap();
-    let mut yaml_str = String::new();
-    let _ = test_file.read_to_string(&mut yaml_str).unwrap();
-    let docs = YamlLoader::load_from_str(&yaml_str).unwrap();
-    let cases = (&docs[0])["test_cases"].as_vec().unwrap();
-    cases.clone()
 }
