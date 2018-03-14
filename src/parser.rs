@@ -1,29 +1,30 @@
 use std::str::FromStr;
 use std::string::ParseError;
-use std::borrow::Cow;
 use regex::{Captures, Regex, RegexBuilder};
 use regex;
 
 use serde::{Deserialize, Deserializer};
 use serde::de::Error;
 
-use serde_json;
+use rmps;
 
 use {Browser, Device, OS};
 
-static UA_PARSER_REGEX_YAML: &'static str = include_str!("../resources/regexes.json");
+static UA_PARSER_REGEX_DATA: &'static [u8] = include_bytes!("../resources/regexes.msgpack");
 
 lazy_static! {
     pub(super) static ref UA_PARSER_REGEXES: UARegexes = {
-        serde_json::from_str(UA_PARSER_REGEX_YAML).unwrap()
+        rmps::from_slice(UA_PARSER_REGEX_DATA).unwrap()
     };
 }
 
 #[derive(Debug, Deserialize)]
 pub(super) struct UARegexes {
-    #[serde(rename = "user_agent_parsers")]
+    #[serde(rename = "b")]
     browser_parsers: Vec<UABrowserRegex>,
+    #[serde(rename = "d")]
     device_parsers: Vec<UADeviceRegex>,
+    #[serde(rename = "o")]
     os_parsers: Vec<UAOSRegex>,
 }
 
@@ -57,9 +58,8 @@ macro_rules! derive_with_regex_field {
     	#[derive(Deserialize)]
     	// Why not call this Raw and use macro hygene?
 	    struct $name_raw {
+	    	#[serde(rename="r")]
 	    	regex: String,
-	    	#[serde(default)]
-	    	regex_flag: Option<String>,
 	    	$(
 	    		$(#[$field_meta])*
 	    		$field: $field_type
@@ -71,12 +71,11 @@ macro_rules! derive_with_regex_field {
     	        where D: Deserializer<'de>
     	    {
     	        let raw = $name_raw::deserialize(deserializer)?;
-    	        let flags = raw.regex_flag.as_ref().map(String::as_str);
-    	        let regex = match compile_regex(&raw.regex, flags) {
+    	        let regex = match compile_regex(&raw.regex) {
     	        	Ok(regex) => regex,
     	        	Err(err) => {
     	        		let err = D::Error::custom(
-    	        			format!("Error compiling regex pattern.\npattern: {}\nerror: {}",
+    	        			format!("Error compiling regex pattern.\n  pattern: {}\n  error: {}",
     	        				    raw.regex, err));
     	        		return Err(err);
     	        	}
@@ -90,15 +89,8 @@ macro_rules! derive_with_regex_field {
     }
 }
 
-fn compile_regex(pattern: &str, flags: Option<&str>) -> Result<Regex, regex::Error> {
-    let rust_pattern = {
-        if let Some(flags) = flags {
-            Cow::Owned(format!("(?{}){}", flags, pattern))
-        } else {
-            Cow::Borrowed(pattern)
-        }
-    };
-    let mut builder = RegexBuilder::new(&rust_pattern);
+fn compile_regex(pattern: &str) -> Result<Regex, regex::Error> {
+    let mut builder = RegexBuilder::new(&pattern);
     // We need to increase this limit for the bot
     // patterns used by uap-core.
     // Fixed by https://github.com/ua-parser/uap-core/pull/62.
@@ -109,13 +101,13 @@ fn compile_regex(pattern: &str, flags: Option<&str>) -> Result<Regex, regex::Err
 derive_with_regex_field! {
     #[derive(Debug)]
     struct UABrowserRegex UABrowserRegexRaw {
-        #[serde(default)]
+        #[serde(default, rename="f")]
         family_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="1")]
         v1_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="2")]
         v2_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="3")]
         v3_replacement: Option<String>
     }
 }
@@ -123,15 +115,15 @@ derive_with_regex_field! {
 derive_with_regex_field! {
     #[derive(Debug)]
     struct UAOSRegex UAOSRegexRaw {
-        #[serde(default)]
+        #[serde(default, rename="o")]
         os_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="1")]
         os_v1_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="2")]
         os_v2_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="3")]
         os_v3_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="4")]
         os_v4_replacement: Option<String>
     }
 }
@@ -139,11 +131,11 @@ derive_with_regex_field! {
 derive_with_regex_field! {
     #[derive(Debug)]
     struct UADeviceRegex UADeviceRegexRaw {
-        #[serde(default)]
+        #[serde(default, rename="d")]
         device_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="b")]
         brand_replacement: Option<String>,
-        #[serde(default)]
+        #[serde(default, rename="m")]
         model_replacement: Option<String>
     }
 }

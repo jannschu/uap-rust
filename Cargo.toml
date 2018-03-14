@@ -10,11 +10,10 @@ repository = "https://github.com/yaccio/uap-rust"
 documentation = "https://mrbechcrates.github.io/uap-rust-doc/uap_rust/index.html"
 keywords = ["user", "agent"]
 
-
 [dependencies]
 lazy_static = "1.0"
 regex = "0.2.9"
 serde = "1.0"
 serde_derive = "1.0"
-serde_json = "1.0"
+rmp-serde = "0.13"
 yaml-rust = "0.4"

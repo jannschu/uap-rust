@@ -1,12 +1,18 @@
 """
 Downloads the resources from ua-parser.
 """
-import json
 import yaml
 import os
+import re
+import sys
 from urllib.request import urlopen
 from urllib.parse import urljoin
-import re
+
+try:
+    import msgpack
+except ModuleNotFoundError:
+    sys.exit("You need to install the Python package `msgpack' for this tool.\n"
+             "Try to install it with `pip install msgpack`.")
 
 def download(path):
     """Download file relative to ua-parser GitHub repository."""
@@ -21,23 +27,29 @@ def save(path, content):
     directory = os.path.dirname(path)
     if not os.path.exists(directory):
         os.makedirs(directory)
-    with open(path, 'w') as file:
+    flags = 'wb' if isinstance(content, bytes) else 'w'
+    with open(path, flags) as file:
         file.write(content)
 
-def yaml_to_json(yaml_str):
-    """Convert a YAML to JSON."""
+def yaml_to_msgpack(yaml_str, patch=None):
+    """Convert a YAML to MessagePack format."""
+    print("Parse YAML. ", end='', flush=True)
     obj = yaml.load(yaml_str)
-    return json.dumps(obj)
+    if callable(patch):
+        print("Patch. ", end='', flush=True)
+        obj = patch(obj)
+    print("Convert to MsgPack. ", end='', flush=True)
+    return msgpack.packb(obj)
 
 def copy(path, patch=None):
     """Copy a file from the remote repo to the local."""
-    print("Copy {}...".format(path))
+    print("Copy {}".format(path))
+    print("  Download. ", end='', flush=True)
     content = download(path)
-    if callable(patch):
-        content = patch(content)
     if path.endswith('.yaml'):
-        content = yaml_to_json(content)
-        path = path[:-5] + '.json'
+        content = yaml_to_msgpack(content, patch=patch)
+        path = path[:-5] + '.msgpack'
+    print("Save.", flush=True)
     save(path, content)
 
 BROWSER_TEST_FILES = [
@@ -54,11 +66,46 @@ OS_TEST_FILES = [
 
 DEVICE_TEST_FILES = ['tests/test_device.yaml']
 
-def _patch_regex_file(yaml_str):
-    # Fix. See https://github.com/ua-parser/uap-core/pull/310
-    yaml_str = yaml_str.replace('|)', ')?')
-    yaml_str = re.sub(r"(?<!\\)\\([ /!])", '\\1', yaml_str)
-    return yaml_str
+KEY_SHORTCUTS = {
+    "user_agent_parsers": "b",
+    "device_parsers": "d",
+    "os_parsers": "o",
+    "regex": "r",
+    "family_replacement": "f",
+    "v1_replacement": "1",
+    "v2_replacement": "2",
+    "v3_replacement": "3",
+    "os_replacement": "o",
+    "os_v1_replacement": "1",
+    "os_v2_replacement": "2",
+    "os_v3_replacement": "3",
+    "os_v4_replacement": "4",
+    "device_replacement": "d",
+    "brand_replacement": "b",
+    "model_replacement": "m",
+}
+
+def _patch_regex_file(obj):
+    if isinstance(obj, dict):
+        if 'regex' in obj:
+            # Fix. See https://github.com/ua-parser/uap-core/pull/310
+            regex = obj['regex'].replace('|)', ')?')
+            obj['regex'] = re.sub(r"(?<!\\)\\([ /!])", '\\1', regex)
+        if 'regex_flag' in obj:
+            # Use the syntax for flags used by Rust's regex implementation
+            obj['regex'] = "(?{}){}".format(obj['regex_flag'], obj['regex'])
+            del obj['regex_flag']
+        for key in list(obj.keys()):
+            obj[key] = _patch_regex_file(obj[key])
+            # Replace key names by shortcuts to save storage
+            if key in KEY_SHORTCUTS:
+                obj[KEY_SHORTCUTS[key]] = obj[key]
+                del obj[key]
+        return obj
+    elif isinstance(obj, list):
+        return [_patch_regex_file(item) for item in obj]
+    else:
+        return obj
 
 if __name__ == '__main__':
     copy("LICENSE")
