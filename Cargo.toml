@@ -11,9 +11,12 @@ documentation = "https://mrbechcrates.github.io/uap-rust-doc/uap_rust/index.html
 keywords = ["user", "agent"]
 
 [dependencies]
+lazy-init = "0.3"
 lazy_static = "1.0"
 regex = "0.2.9"
+rmp-serde = "0.13"
 serde = "1.0"
 serde_derive = "1.0"
-rmp-serde = "0.13"
+
+[dev-dependencies]
 yaml-rust = "0.4"

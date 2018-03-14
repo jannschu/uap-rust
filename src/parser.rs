@@ -1,6 +1,4 @@
-use std::str::FromStr;
 use std::borrow::Cow;
-use std::string::ParseError;
 
 use regex::{Captures, Regex, RegexBuilder};
 use regex;
@@ -10,7 +8,7 @@ use serde::de::Error;
 
 use rmps;
 
-use {Browser, Device, OS, DEFAULT_NAME};
+use {Browser, Device, DEFAULT_NAME, OS};
 
 static UA_PARSER_REGEX_DATA: &'static [u8] = include_bytes!("../resources/regexes.msgpack");
 
@@ -49,7 +47,7 @@ macro_rules! derive_with_regex_field {
 
     	impl<'a> PartialEq for $name<'a> {
     		fn eq(&self, other: &$name) -> bool {
-    			$(self.$field == other.$field && )* 
+    			$(self.$field == other.$field && )*
     			self.regex.as_str() == other.regex.as_str()
     		}
     	}
@@ -142,12 +140,12 @@ derive_with_regex_field! {
     }
 }
 
-fn replace_matches<'a: 'c, 'b: 'c, 'c>(s: &'a str, caps: &'b Captures) -> Option<Cow<'c, str>> {
-	let s = match s.as_bytes().contains(&b'$') {
+fn replace_matches<'a>(s: &'a str, caps: &Captures<'a>) -> Option<Cow<'a, str>> {
+    let s = match s.as_bytes().contains(&b'$') {
         true => {
-        	let mut dst = String::with_capacity(2 * s.len());
-        	caps.expand(s, &mut dst);
-        	Cow::Owned(dst)
+            let mut dst = String::with_capacity(2 * s.len());
+            caps.expand(s, &mut dst);
+            Cow::Owned(dst)
         }
         false => Cow::Borrowed(s),
     };
@@ -156,29 +154,29 @@ fn replace_matches<'a: 'c, 'b: 'c, 'c>(s: &'a str, caps: &'b Captures) -> Option
     // lifetimes (and the trim method)?
     // cf. https://github.com/rust-lang/rust-roadmap/issues/16
     // Or `move into guards`?
-    
+
     if s.is_empty() {
-    	return None;
+        return None;
     }
 
-    let start = s.find(|c: char| c != ' ' ).unwrap_or(s.len());
-    let end = s.rfind(|c: char| c != ' ' ).unwrap_or(s.len() - 1) + 1;
+    let start = s.find(|c: char| c != ' ').unwrap_or(s.len());
+    let end = s.rfind(|c: char| c != ' ').unwrap_or(s.len() - 1) + 1;
 
     if start == end {
-    	return None;
+        return None;
     }
 
     if start == 0 && end == s.len() {
-    	return Some(s);
+        return Some(s);
     }
 
     match s {
-    	Cow::Borrowed(s) => Some(Cow::Borrowed(&s[start..end])),
-    	Cow::Owned(s) => Some(Cow::Owned(s[start..end].to_string())),
+        Cow::Borrowed(s) => Some(Cow::Borrowed(&s[start..end])),
+        Cow::Owned(s) => Some(Cow::Owned(s[start..end].to_string())),
     }
 }
 
-fn get_or_none<'a>(c: &'a Captures, i: usize) -> Option<Cow<'a, str>> {
+fn get_or_none<'a>(c: &Captures<'a>, i: usize) -> Option<Cow<'a, str>> {
     if let Some(group) = c.get(i) {
         let s = Cow::Borrowed(group.as_str());
         if s.is_empty() {
@@ -191,8 +189,8 @@ fn get_or_none<'a>(c: &'a Captures, i: usize) -> Option<Cow<'a, str>> {
     }
 }
 
-impl<'a> UABrowserRegex<'a> {
-    fn parse(&self, agent: &str) -> Option<Browser> {
+impl<'a: 'b, 'b> UABrowserRegex<'a> {
+    fn parse(&self, agent: &'b str) -> Option<Browser<'b>> {
         self.regex.captures(agent).map(|c| {
             let family = self.family_replacement
                 .and_then(|f| {
@@ -206,7 +204,7 @@ impl<'a> UABrowserRegex<'a> {
                 .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
 
             let major = self.v1_replacement
-            	.map(|v1| Cow::Borrowed(v1))
+                .map(|v1| Cow::Borrowed(v1))
                 .or_else(|| get_or_none(&c, 2));
             let minor = self.v2_replacement
                 .map(|v2| Cow::Borrowed(v2))
@@ -216,20 +214,20 @@ impl<'a> UABrowserRegex<'a> {
                 .or_else(|| get_or_none(&c, 4));
 
             Browser {
-                family: (*family).to_string(),
-                major: major.map(|x| (*x).to_string()),
-                minor: minor.map(|x| (*x).to_string()),
-                patch: patch.map(|x| (*x).to_string()),
+                family: family,
+                major: major,
+                minor: minor,
+                patch: patch,
             }
         })
     }
 }
 
 impl<'a> UAOSRegex<'a> {
-    fn parse(&self, agent: &str) -> Option<OS> {
+    fn parse(&self, agent: &'a str) -> Option<OS> {
         self.regex.captures(agent).map(|c| {
             let family: Cow<str> = self.os_replacement
-                .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(&f, &c))
+                .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(f, &c))
                 .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
             let major = self.os_v1_replacement
                 .map_or_else(|| get_or_none(&c, 2), |m| replace_matches(m, &c));
@@ -241,68 +239,64 @@ impl<'a> UAOSRegex<'a> {
                 .map_or_else(|| get_or_none(&c, 5), |p| replace_matches(p, &c));
 
             OS {
-                family: (*family).to_string(),
-                major: major.map(|x| (*x).to_string()),
-                minor: minor.map(|x| (*x).to_string()),
-                patch: patch.map(|x| (*x).to_string()),
-                patch_minor: patch_minor.map(|x| (*x).to_string()),
+                family: family,
+                major: major,
+                minor: minor,
+                patch: patch,
+                patch_minor: patch_minor,
             }
         })
     }
 }
 
 impl<'a> UADeviceRegex<'a> {
-    fn parse(&self, agent: &str) -> Option<Device> {
+    fn parse(&self, agent: &'a str) -> Option<Device> {
         self.regex.captures(agent).map(|c| {
             let family = self.device_replacement
-                .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(&f, &c))
+                .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(f, &c))
                 .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
-            let brand = self.brand_replacement
-            	.and_then(|m| replace_matches(m, &c));
+            let brand = self.brand_replacement.and_then(|m| replace_matches(m, &c));
             let model = self.model_replacement
                 .map_or_else(|| get_or_none(&c, 1), |m| replace_matches(m, &c));
             Device {
-                family: (*family).to_string(),
-                brand: brand.map(|x| (*x).to_string()),
-                model: model.map(|x| (*x).to_string()),
+                family: family,
+                brand: brand,
+                model: model,
             }
         })
     }
 }
 
-impl FromStr for Browser {
-    type Err = ParseError;
-    fn from_str(agent: &str) -> Result<Self, Self::Err> {
-        Ok(UA_PARSER_REGEXES
+impl<'a> From<&'a str> for Browser<'a> {
+    fn from(agent: &'a str) -> Self {
+        UA_PARSER_REGEXES
             .browser_parsers
             .iter()
             .filter_map(|b| b.parse(agent))
             .next()
-            .unwrap_or_else(|| Browser::default()))
+            .unwrap_or_else(|| Browser::default())
     }
 }
 
-impl FromStr for OS {
-    type Err = ParseError;
-    fn from_str(agent: &str) -> Result<Self, Self::Err> {
-        Ok(UA_PARSER_REGEXES
+impl<'a> From<&'a str> for OS<'a> {
+    fn from(agent: &'a str) -> Self {
+        UA_PARSER_REGEXES
             .os_parsers
             .iter()
             .filter_map(|o| o.parse(agent))
             .next()
-            .unwrap_or_else(|| Self::default()))
+            .unwrap_or_else(|| Self::default())
     }
 }
 
-impl FromStr for Device {
-    type Err = ParseError;
-    fn from_str(agent: &str) -> Result<Self, Self::Err> {
-        Ok(UA_PARSER_REGEXES
+impl<'a> From<&'a str> for Device<'a> {
+    fn from(agent: &'a str) -> Self {
+        UA_PARSER_REGEXES
             .device_parsers
             .iter()
             .filter_map(|d| d.parse(agent))
             .next()
-            .unwrap_or_else(|| Device::default()))
+            .unwrap_or_else(|| Device::default())
     }
 }
 
@@ -318,11 +312,14 @@ fn test_replace_matches() {
 
 #[test]
 fn test_deserialize() {
-	assert_eq!(UA_PARSER_REGEXES.browser_parsers[0], UABrowserRegex {
-		regex: Regex::new(r"(ESPN)[%20| ]+Radio/(\d+)\.(\d+)\.(\d+) CFNetwork").unwrap(),
-		family_replacement: None,
-		v1_replacement: None,
-		v2_replacement: None,
-		v3_replacement: None
-	});
+    assert_eq!(
+        UA_PARSER_REGEXES.browser_parsers[0],
+        UABrowserRegex {
+            regex: Regex::new(r"(ESPN)[%20| ]+Radio/(\d+)\.(\d+)\.(\d+) CFNetwork").unwrap(),
+            family_replacement: None,
+            v1_replacement: None,
+            v2_replacement: None,
+            v3_replacement: None,
+        }
+    );
 }

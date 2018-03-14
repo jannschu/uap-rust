@@ -1,42 +1,62 @@
+use std::ops::Deref;
+
+use lazy_init::LazyTransform;
+
 use {Browser, Device, OS};
 
 ///`Client` struct, contains the parsed user agent information.
-#[derive(Debug, PartialEq, Eq)]
 pub struct Client<'a> {
-    pub(crate) user_agent: &'a str,
-    browser: Option<Browser>,
-    os: Option<OS>,
-    device: Option<Device>,
+    browser: LazyParser<'a, Browser<'a>>,
+    os: LazyParser<'a, OS<'a>>,
+    device: LazyParser<'a, Device<'a>>,
 }
 
 impl<'a> Client<'a> {
     pub fn new(user_agent: &str) -> Client {
         Client {
-            user_agent: user_agent,
-            browser: None,
-            os: None,
-            device: None,
+            browser: LazyParser::new(user_agent),
+            os: LazyParser::new(user_agent),
+            device: LazyParser::new(user_agent),
         }
     }
 
-    pub fn browser(&mut self) -> &Browser {
-        if self.browser.is_none() {
-            self.browser = self.user_agent.parse().ok();
-        }
-        &self.browser.as_ref().unwrap()
+    pub fn browser(&self) -> &Browser {
+        &*self.browser
     }
 
-    pub fn os(&mut self) -> &OS {
-        if self.os.is_none() {
-            self.os = self.user_agent.parse().ok();
-        }
-        &self.os.as_ref().unwrap()
+    pub fn os(&self) -> &OS {
+        &*self.os
     }
 
-    pub fn device(&mut self) -> &Device {
-        if self.device.is_none() {
-            self.device = self.user_agent.parse().ok();
+    pub fn device(&self) -> &Device {
+        &*self.device
+    }
+}
+
+struct LazyParser<'a, T>
+where
+    T: From<&'a str> + Sync,
+{
+    lazy: LazyTransform<&'a str, T>,
+}
+
+impl<'a, T> LazyParser<'a, T>
+where
+    T: From<&'a str> + Sync,
+{
+    fn new(input: &'a str) -> Self {
+        Self {
+            lazy: LazyTransform::new(input),
         }
-        &self.device.as_ref().unwrap()
+    }
+}
+
+impl<'a, T> Deref for LazyParser<'a, T>
+where
+    T: From<&'a str> + Sync,
+{
+    type Target = T;
+    fn deref(&self) -> &T {
+        self.lazy.get_or_create(|s| T::from(s))
     }
 }
