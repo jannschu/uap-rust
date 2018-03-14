@@ -31,6 +31,10 @@ impl<'a> Client<'a> {
     pub fn device(&self) -> &Device {
         &*self.device
     }
+
+    pub fn is_bot(&self) -> bool {
+    	self.device().family == "Spider"
+    }
 }
 
 struct LazyParser<'a, T>
