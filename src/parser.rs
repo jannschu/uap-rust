@@ -141,13 +141,13 @@ derive_with_regex_field! {
 }
 
 fn replace_matches<'a>(s: &'a str, caps: &Captures<'a>) -> Option<Cow<'a, str>> {
-    let s = match s.as_bytes().contains(&b'$') {
+    let s: Cow<str> = match s.as_bytes().contains(&b'$') {
         true => {
             let mut dst = String::with_capacity(2 * s.len());
             caps.expand(s, &mut dst);
-            Cow::Owned(dst)
+            dst.into()
         }
-        false => Cow::Borrowed(s),
+        false => s.into(),
     };
 
     // FIXME: Can this be improved with non-lexical

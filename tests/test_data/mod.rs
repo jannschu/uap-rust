@@ -1,8 +1,5 @@
 use rmps;
 
-use std::borrow::Cow;
-use std::borrow::Cow::Borrowed;
-
 use uap_rust::{Browser, Device, OS};
 
 lazy_static! {
@@ -26,13 +23,6 @@ lazy_static! {
     static ref DEVICE_TEST: Vec<&'static [u8]> = {
         vec![include_bytes!("../../resources/tests/test_device.msgpack")]
     };
-}
-
-fn borrowed(u: Option<&str>) -> Option<Cow<str>> {
-    match u {
-        None => None,
-        Some(s) => Some(Borrowed(s)),
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,10 +56,10 @@ pub fn parse_browser_test_cases() -> Vec<(&'static str, Browser<'static>)> {
             (
                 case.user_agent_string,
                 Browser {
-                    family: Borrowed(case.family),
-                    major: borrowed(case.major),
-                    minor: borrowed(case.minor),
-                    patch: borrowed(case.patch),
+                    family: case.family.into(),
+                    major: case.major.map(<_>::into),
+                    minor: case.minor.map(<_>::into),
+                    patch: case.patch.map(<_>::into),
                 },
             )
         })
@@ -109,11 +99,11 @@ pub fn parse_os_test_cases() -> Vec<(&'static str, OS<'static>)> {
             (
                 case.user_agent_string,
                 OS {
-                    family: Borrowed(case.family),
-                    major: borrowed(case.major),
-                    minor: borrowed(case.minor),
-                    patch: borrowed(case.patch),
-                    patch_minor: borrowed(case.patch_minor),
+                    family: case.family.into(),
+                    major: case.major.map(<_>::into),
+                    minor: case.minor.map(<_>::into),
+                    patch: case.patch.map(<_>::into),
+                    patch_minor: case.patch_minor.map(<_>::into),
                 },
             )
         })
@@ -149,9 +139,9 @@ pub fn parse_device_test_cases() -> Vec<(&'static str, Device<'static>)> {
             (
                 case.user_agent_string,
                 Device {
-                    family: Borrowed(case.family),
-                    brand: borrowed(case.brand),
-                    model: borrowed(case.model),
+                    family: case.family.into(),
+                    brand: case.brand.map(<_>::into),
+                    model: case.model.map(<_>::into),
                 },
             )
         })

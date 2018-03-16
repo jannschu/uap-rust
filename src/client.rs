@@ -33,7 +33,7 @@ impl<'a> Client<'a> {
     }
 
     pub fn is_bot(&self) -> bool {
-    	self.device().family == "Spider"
+        self.device().family == "Spider"
     }
 }
 

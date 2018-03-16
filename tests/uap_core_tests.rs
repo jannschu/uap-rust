@@ -10,8 +10,6 @@ use uap_rust::{Browser, Client, Device, OS};
 
 mod test_data;
 
-use std::borrow::Cow::Borrowed;
-
 #[test]
 fn test_simple_case() {
     let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3";
@@ -19,27 +17,27 @@ fn test_simple_case() {
     assert_eq!(
         client.browser(),
         &Browser {
-            family: Borrowed("Mobile Safari"),
-            major: Some(Borrowed("5")),
-            minor: Some(Borrowed("1")),
+            family: "Mobile Safari".into(),
+            major: Some("5".into()),
+            minor: Some("1".into()),
             patch: None,
         }
     );
     assert_eq!(
         client.device(),
         &Device {
-            family: Borrowed("iPhone"),
-            brand: Some(Borrowed("Apple")),
-            model: Some(Borrowed("iPhone")),
+            family: "iPhone".into(),
+            brand: Some("Apple".into()),
+            model: Some("iPhone".into()),
         }
     );
     assert_eq!(
         client.os(),
         &OS {
-            family: Borrowed("iOS"),
-            major: Some(Borrowed("5")),
-            minor: Some(Borrowed("1")),
-            patch: Some(Borrowed("1")),
+            family: "iOS".into(),
+            major: Some("5".into()),
+            minor: Some("1".into()),
+            patch: Some("1".into()),
             patch_minor: None,
         }
     );

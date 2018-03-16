@@ -28,6 +28,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
+use std::str::FromStr;
 use std::borrow::Cow;
 
 mod parser;
@@ -67,7 +68,7 @@ static DEFAULT_NAME: &str = "Other";
 impl<'a> Default for Browser<'a> {
     fn default() -> Browser<'a> {
         Browser {
-            family: Cow::Borrowed(DEFAULT_NAME),
+            family: DEFAULT_NAME.into(),
             major: None,
             minor: None,
             patch: None,
@@ -78,7 +79,7 @@ impl<'a> Default for Browser<'a> {
 impl<'a> Default for Device<'a> {
     fn default() -> Device<'a> {
         Device {
-            family: Cow::Borrowed(DEFAULT_NAME),
+            family: DEFAULT_NAME.into(),
             model: None,
             brand: None,
         }
@@ -88,7 +89,7 @@ impl<'a> Default for Device<'a> {
 impl<'a> Default for OS<'a> {
     fn default() -> OS<'a> {
         OS {
-            family: Cow::Borrowed(DEFAULT_NAME),
+            family: DEFAULT_NAME.into(),
             major: None,
             minor: None,
             patch: None,
@@ -96,3 +97,45 @@ impl<'a> Default for OS<'a> {
         }
     }
 }
+
+macro_rules! default_parse {
+    ($obj:ident, $name:ident, $default:ident) => (
+        $obj.$name
+            .as_ref()
+            .and_then(|c| c.parse().ok())
+            .unwrap_or($default)
+    )
+}
+
+impl<'a> Browser<'a> {
+    pub fn major_or<T: FromStr>(&self, default: T) -> T {
+        default_parse!(self, major, default)
+    }
+
+    pub fn minor_or<T: FromStr>(&self, default: T) -> T {
+        default_parse!(self, minor, default)
+    }
+
+    pub fn patch_or<T: FromStr>(&self, default: T) -> T {
+        default_parse!(self, patch, default)
+    }
+}
+
+impl<'a> OS<'a> {
+    pub fn major_or<T: FromStr>(&self, default: T) -> T {
+        default_parse!(self, major, default)
+    }
+
+    pub fn minor_or<T: FromStr>(&self, default: T) -> T {
+        default_parse!(self, minor, default)
+    }
+
+    pub fn patch_or<T: FromStr>(&self, default: T) -> T {
+        default_parse!(self, patch, default)
+    }
+
+    pub fn patch_minor_or<T: FromStr>(&self, default: T) -> T {
+        default_parse!(self, patch_minor, default)
+    }
+}
+
