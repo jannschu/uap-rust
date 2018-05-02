@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
-use regex::{Captures, Regex, RegexBuilder};
-use regex;
+use regex::{Captures, Regex};
 
 use serde::{Deserialize, Deserializer};
 use serde::de::Error;
@@ -71,7 +70,7 @@ macro_rules! derive_with_regex_field {
     	        where D: Deserializer<'de>
     	    {
     	        let raw = $name_raw::deserialize(deserializer)?;
-    	        let regex = match compile_regex(&raw.regex) {
+    	        let regex = match Regex::new(&raw.regex) {
     	        	Ok(regex) => regex,
     	        	Err(err) => {
     	        		let err = D::Error::custom(
@@ -87,15 +86,6 @@ macro_rules! derive_with_regex_field {
     	    }
     	}
     }
-}
-
-fn compile_regex(pattern: &str) -> Result<Regex, regex::Error> {
-    let mut builder = RegexBuilder::new(&pattern);
-    // We need to increase this limit for the bot
-    // patterns used by uap-core.
-    // Fixed by https://github.com/ua-parser/uap-core/pull/62.
-    builder.nest_limit(100);
-    builder.build()
 }
 
 derive_with_regex_field! {

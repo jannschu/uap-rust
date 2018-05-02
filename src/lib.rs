@@ -138,4 +138,3 @@ impl<'a> OS<'a> {
         default_parse!(self, patch_minor, default)
     }
 }
-
