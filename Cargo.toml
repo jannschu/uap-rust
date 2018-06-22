@@ -1,7 +1,7 @@
 [package]
 name = "uap-rust"
-version = "0.0.4"
-authors = ["Martin <martin@yacc.io>"]
+version = "0.1.0"
+authors = ["Jannik Schürg <jannschu@posteo.de>", "Martin <martin@yacc.io>"]
 description = "User agent parser library for Rust based on the ua-parser project"
 
 license = "MIT"

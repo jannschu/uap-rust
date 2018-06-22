@@ -1,4 +1,4 @@
-//! # ua-parser for rust
+//! # uap-rust
 //!
 //! This is a web browser user agent parser for Rust based on
 //! [ua-parser](https://github.com/ua-parser).

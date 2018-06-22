@@ -1,11 +1,13 @@
 # uap-rust
 
-## ua-parser for rust
+[![Build Status](https://travis-ci.org/jannschu/uap-rust.svg?branch=master)](https://travis-ci.org/jannschu/uap-rust)
 
 This is a web browser user agent parser for Rust based on
 [ua-parser](https://github.com/ua-parser).
 
-### Usage example
+This fork ended up being a complete rewrite. All uap-core tests are passing.
+
+## Usage example
 
 ```rust
 use uap_rust::Client;
