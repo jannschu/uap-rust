@@ -61,6 +61,6 @@ where
 {
     type Target = T;
     fn deref(&self) -> &T {
-        self.lazy.get_or_create(|s| T::from(s))
+        self.lazy.get_or_create(T::from)
     }
 }

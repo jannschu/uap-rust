@@ -28,11 +28,11 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use std::str::FromStr;
 use std::borrow::Cow;
+use std::str::FromStr;
 
-mod parser;
 mod client;
+mod parser;
 
 pub use client::Client;
 
@@ -99,12 +99,12 @@ impl<'a> Default for OS<'a> {
 }
 
 macro_rules! default_parse {
-    ($obj:ident, $name:ident, $default:ident) => (
+    ($obj:ident, $name:ident, $default:ident) => {
         $obj.$name
             .as_ref()
             .and_then(|c| c.parse().ok())
             .unwrap_or($default)
-    )
+    };
 }
 
 impl<'a> Browser<'a> {

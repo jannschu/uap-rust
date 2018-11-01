@@ -12,17 +12,14 @@ lazy_static! {
             include_bytes!("../../resources/test_resources/podcasting_user_agent_strings.msgpack"),
         ]
     };
-
     static ref OS_TEST: Vec<&'static [u8]> = {
         vec![
             include_bytes!("../../resources/tests/test_os.msgpack"),
             include_bytes!("../../resources/test_resources/additional_os_tests.msgpack"),
         ]
     };
-
-    static ref DEVICE_TEST: Vec<&'static [u8]> = {
-        vec![include_bytes!("../../resources/tests/test_device.msgpack")]
-    };
+    static ref DEVICE_TEST: Vec<&'static [u8]> =
+        { vec![include_bytes!("../../resources/tests/test_device.msgpack")] };
 }
 
 #[derive(Debug, Deserialize)]

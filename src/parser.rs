@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use regex::{Captures, Regex};
 
-use serde::{Deserialize, Deserializer};
 use serde::de::Error;
+use serde::{Deserialize, Deserializer};
 
 use rmps;
 
@@ -12,9 +12,8 @@ use {Browser, Device, DEFAULT_NAME, OS};
 static UA_PARSER_REGEX_DATA: &'static [u8] = include_bytes!("../resources/regexes.msgpack");
 
 lazy_static! {
-    pub(super) static ref UA_PARSER_REGEXES: UARegexes<'static> = {
-        rmps::from_slice(UA_PARSER_REGEX_DATA).unwrap()
-    };
+    pub(super) static ref UA_PARSER_REGEXES: UARegexes<'static> =
+        { rmps::from_slice(UA_PARSER_REGEX_DATA).unwrap() };
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,13 +130,12 @@ derive_with_regex_field! {
 }
 
 fn replace_matches<'a>(s: &'a str, caps: &Captures<'a>) -> Option<Cow<'a, str>> {
-    let s: Cow<str> = match s.as_bytes().contains(&b'$') {
-        true => {
-            let mut dst = String::with_capacity(2 * s.len());
-            caps.expand(s, &mut dst);
-            dst.into()
-        }
-        false => s.into(),
+    let s: Cow<str> = if s.as_bytes().contains(&b'$') {
+        let mut dst = String::with_capacity(2 * s.len());
+        caps.expand(s, &mut dst);
+        dst.into()
+    } else {
+        s.into()
     };
 
     // FIXME: Can this be improved with non-lexical
@@ -149,8 +147,8 @@ fn replace_matches<'a>(s: &'a str, caps: &Captures<'a>) -> Option<Cow<'a, str>> 
         return None;
     }
 
-    let start = s.find(|c: char| c != ' ').unwrap_or(s.len());
-    let end = s.rfind(|c: char| c != ' ').unwrap_or(s.len() - 1) + 1;
+    let start = s.find(|c: char| c != ' ').unwrap_or_else(|| s.len());
+    let end = s.rfind(|c: char| c != ' ').unwrap_or_else(|| s.len() - 1) + 1;
 
     if start == end {
         return None;
@@ -182,7 +180,8 @@ fn get_or_none<'a>(c: &Captures<'a>, i: usize) -> Option<Cow<'a, str>> {
 impl<'a: 'b, 'b> UABrowserRegex<'a> {
     fn parse(&self, agent: &'b str) -> Option<Browser<'b>> {
         self.regex.captures(agent).map(|c| {
-            let family = self.family_replacement
+            let family = self
+                .family_replacement
                 .and_then(|f| {
                     if let Some(group1) = c.get(1) {
                         Some(Cow::Owned(f.replace("$1", group1.as_str())))
@@ -193,21 +192,24 @@ impl<'a: 'b, 'b> UABrowserRegex<'a> {
                 .or_else(|| c.get(1).map(|c| Cow::Borrowed(c.as_str())))
                 .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
 
-            let major = self.v1_replacement
+            let major = self
+                .v1_replacement
                 .map(|v1| Cow::Borrowed(v1))
                 .or_else(|| get_or_none(&c, 2));
-            let minor = self.v2_replacement
+            let minor = self
+                .v2_replacement
                 .map(|v2| Cow::Borrowed(v2))
                 .or_else(|| get_or_none(&c, 3));
-            let patch = self.v3_replacement
+            let patch = self
+                .v3_replacement
                 .map(|v2| Cow::Borrowed(v2))
                 .or_else(|| get_or_none(&c, 4));
 
             Browser {
-                family: family,
-                major: major,
-                minor: minor,
-                patch: patch,
+                family,
+                major,
+                minor,
+                patch,
             }
         })
     }
@@ -216,24 +218,29 @@ impl<'a: 'b, 'b> UABrowserRegex<'a> {
 impl<'a> UAOSRegex<'a> {
     fn parse(&self, agent: &'a str) -> Option<OS> {
         self.regex.captures(agent).map(|c| {
-            let family: Cow<str> = self.os_replacement
+            let family: Cow<str> = self
+                .os_replacement
                 .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(f, &c))
                 .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
-            let major = self.os_v1_replacement
+            let major = self
+                .os_v1_replacement
                 .map_or_else(|| get_or_none(&c, 2), |m| replace_matches(m, &c));
-            let minor = self.os_v2_replacement
+            let minor = self
+                .os_v2_replacement
                 .map_or_else(|| get_or_none(&c, 3), |m| replace_matches(m, &c));
-            let patch = self.os_v3_replacement
+            let patch = self
+                .os_v3_replacement
                 .map_or_else(|| get_or_none(&c, 4), |p| replace_matches(p, &c));
-            let patch_minor = self.os_v4_replacement
+            let patch_minor = self
+                .os_v4_replacement
                 .map_or_else(|| get_or_none(&c, 5), |p| replace_matches(p, &c));
 
             OS {
-                family: family,
-                major: major,
-                minor: minor,
-                patch: patch,
-                patch_minor: patch_minor,
+                family,
+                major,
+                minor,
+                patch,
+                patch_minor,
             }
         })
     }
@@ -242,16 +249,18 @@ impl<'a> UAOSRegex<'a> {
 impl<'a> UADeviceRegex<'a> {
     fn parse(&self, agent: &'a str) -> Option<Device> {
         self.regex.captures(agent).map(|c| {
-            let family = self.device_replacement
+            let family = self
+                .device_replacement
                 .map_or_else(|| get_or_none(&c, 1), |f| replace_matches(f, &c))
                 .unwrap_or_else(|| Cow::Borrowed(DEFAULT_NAME));
             let brand = self.brand_replacement.and_then(|m| replace_matches(m, &c));
-            let model = self.model_replacement
+            let model = self
+                .model_replacement
                 .map_or_else(|| get_or_none(&c, 1), |m| replace_matches(m, &c));
             Device {
-                family: family,
-                brand: brand,
-                model: model,
+                family,
+                brand,
+                model,
             }
         })
     }
@@ -264,7 +273,7 @@ impl<'a> From<&'a str> for Browser<'a> {
             .iter()
             .filter_map(|b| b.parse(agent))
             .next()
-            .unwrap_or_else(|| Browser::default())
+            .unwrap_or_else(Browser::default)
     }
 }
 
@@ -275,7 +284,7 @@ impl<'a> From<&'a str> for OS<'a> {
             .iter()
             .filter_map(|o| o.parse(agent))
             .next()
-            .unwrap_or_else(|| Self::default())
+            .unwrap_or_else(Self::default)
     }
 }
 
@@ -286,7 +295,7 @@ impl<'a> From<&'a str> for Device<'a> {
             .iter()
             .filter_map(|d| d.parse(agent))
             .next()
-            .unwrap_or_else(|| Device::default())
+            .unwrap_or_else(Device::default)
     }
 }
 
