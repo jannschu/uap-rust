@@ -2,3 +2,4 @@ target/
 .swp
 *.swp
 __pycache__/
+Cargo.lock
