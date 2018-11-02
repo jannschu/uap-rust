@@ -154,13 +154,15 @@ fn replace_matches<'a>(s: &'a str, caps: &Captures<'a>) -> Option<Cow<'a, str>> 
         return None;
     }
 
-    if start == 0 && end == s.len() {
-        return Some(s);
-    }
-
     match s {
         Cow::Borrowed(s) => Some(Cow::Borrowed(&s[start..end])),
-        Cow::Owned(s) => Some(Cow::Owned(s[start..end].to_string())),
+        Cow::Owned(s) => {
+            if start == 0 && end == s.len() {
+                Some(Cow::Owned(s))
+            } else {
+                Some(Cow::Owned(s[start..end].to_string()))
+            }
+        }
     }
 }
 
