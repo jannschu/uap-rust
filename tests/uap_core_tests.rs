@@ -72,3 +72,11 @@ fn test_os() {
         assert_eq!(os, test_os);
     }
 }
+
+#[test]
+fn test_is_bot() {
+    let cases = test_data::parse_device_test_cases();
+    for &(uas, ref test_device) in cases.iter() {
+        assert_eq!(Client::new(uas).is_bot(), &*test_device.family == "Spider");
+    }
+}
