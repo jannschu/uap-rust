@@ -27,6 +27,7 @@ extern crate rmp_serde as rmps;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate owning_ref;
 
 use std::borrow::Cow;
 use std::str::FromStr;

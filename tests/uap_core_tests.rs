@@ -13,7 +13,7 @@ mod test_data;
 #[test]
 fn test_simple_case() {
     let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3";
-    let client = Client::new(&agent);
+    let client = Client::new(agent);
     assert_eq!(
         client.browser(),
         &Browser {
