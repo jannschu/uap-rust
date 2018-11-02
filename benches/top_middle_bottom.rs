@@ -2,10 +2,9 @@
 extern crate criterion;
 extern crate uap_rust;
 
-use criterion::{Criterion, black_box};
+use criterion::{black_box, Criterion};
 
 use uap_rust::Client;
-
 
 fn bench_device(c: &mut Criterion) {
     c.bench_function("device top", |b| {
@@ -53,8 +52,6 @@ fn bench_device(c: &mut Criterion) {
     	});
     });
 }
-
-
 
 fn bench_browser(c: &mut Criterion) {
     c.bench_function("browser top", |b| {
@@ -120,18 +117,20 @@ fn bench_os(c: &mut Criterion) {
 	});
 
     c.bench_function("os middle", |b| {
-    	b.iter(|| {
-        	black_box(Client::new("TestApp/1.0 CFNetwork/758.0.2 Darwin/15.0.0").os());
-        	black_box(Client::new("TestApp/1.0 CFNetwork/808.0.2 Darwin/16.0.0").os());
-        	black_box(Client::new("MyApp/1.0 CFNetwork/893.13.1 Darwin/17.3.0 (x86_64)").os());
-        	black_box(Client::new("Safari/12602.2.14.0.7 CFNetwork/807.1.3 Darwin/16.1.0 (x86_64)").os(), );
-        	black_box(Client::new("Cooliris/1.3 CFNetwork/342.1 Darwin/9.4.1").os());
-        	black_box(Client::new("MobileRSSFree-iPad/3.1 CFNetwork/467.12 Darwin/10.3.1").os());
-        	black_box(Client::new("Yelp/8.2.1 CFNetwork/705.1 Darwin/14.0.0").os());
-        	black_box(Client::new("MyApp/1.0 CFNetwork/811.4.18 Darwin/16.5.0").os());
-        	black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.6.0").os());
-        	black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.7.0").os());
-    	});
+        b.iter(|| {
+            black_box(Client::new("TestApp/1.0 CFNetwork/758.0.2 Darwin/15.0.0").os());
+            black_box(Client::new("TestApp/1.0 CFNetwork/808.0.2 Darwin/16.0.0").os());
+            black_box(Client::new("MyApp/1.0 CFNetwork/893.13.1 Darwin/17.3.0 (x86_64)").os());
+            black_box(
+                Client::new("Safari/12602.2.14.0.7 CFNetwork/807.1.3 Darwin/16.1.0 (x86_64)").os(),
+            );
+            black_box(Client::new("Cooliris/1.3 CFNetwork/342.1 Darwin/9.4.1").os());
+            black_box(Client::new("MobileRSSFree-iPad/3.1 CFNetwork/467.12 Darwin/10.3.1").os());
+            black_box(Client::new("Yelp/8.2.1 CFNetwork/705.1 Darwin/14.0.0").os());
+            black_box(Client::new("MyApp/1.0 CFNetwork/811.4.18 Darwin/16.5.0").os());
+            black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.6.0").os());
+            black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.7.0").os());
+        });
     });
 
     c.bench_function("os bottom", |b| {
