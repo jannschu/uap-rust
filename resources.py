@@ -1,7 +1,6 @@
 """
 Downloads the resources from ua-parser.
 """
-import yaml
 import os
 import re
 import sys
@@ -10,9 +9,10 @@ from urllib.parse import urljoin
 
 try:
     import msgpack
+    import yaml
 except ModuleNotFoundError:
-    sys.exit("You need to install the Python package `msgpack' for this tool.\n"
-             "Try to install it with `pip install msgpack`.")
+    sys.exit("You need to install the Python packages `msgpack' and `PyYAML` for this tool.\n"
+             "Try to install them with `pip install msgpack PyYAML`.")
 
 def download(path):
     """Download file relative to ua-parser GitHub repository."""
