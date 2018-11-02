@@ -1,7 +1,10 @@
-use test::Bencher;
-use test;
+#![feature(test)]
+extern crate test;
+extern crate uap_rust;
 
-use client::Client;
+use test::Bencher;
+
+use uap_rust::Client;
 
 #[bench]
 fn bench_device_top(b: &mut Bencher) {
@@ -53,7 +56,7 @@ fn bench_device_bottom(b: &mut Bencher) {
 
 #[bench]
 fn bench_browser_top(b: &mut Bencher) {
-	b.iter(|| {
+    b.iter(|| {
 		test::black_box(Client::new("ESPN Radio/3.2.113 CFNetwork/485.12.30 Darwin/10.4.0").browser());
 		test::black_box(Client::new("Antenna/965 CFNetwork/758.2.8 Darwin/15.0.0").browser());
 		test::black_box(Client::new("TopPodcastsPro/201 CFNetwork/758.2.8 Darwin/15.0.0").browser());
@@ -69,7 +72,7 @@ fn bench_browser_top(b: &mut Bencher) {
 
 #[bench]
 fn bench_browser_middle(b: &mut Bencher) {
-	b.iter(|| {
+    b.iter(|| {
 		test::black_box(Client::new("Evolution/3.26.2.1").browser());
 		test::black_box(Client::new("RCM CardDAV plugin/0.9.2-dev").browser());
 		test::black_box(Client::new("Mozilla/4.0 (Brew MP 1.0.4; U; en-us; Kyocera; NetFront/4.1/AMB) Sprint S2151-BST").browser());
@@ -85,7 +88,7 @@ fn bench_browser_middle(b: &mut Bencher) {
 
 #[bench]
 fn bench_browser_bottom(b: &mut Bencher) {
-	b.iter(|| {
+    b.iter(|| {
 		test::black_box(Client::new("Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_3; es-es) AppleWebKit/531.22.7 (KHTML, like Gecko)").browser());
 		test::black_box(Client::new("SAMSUNG-SGH-A947/A947UCJF3 Mozilla/5.0 (BREW 5.0.3; BP251/162; U; en; rv:1.8.1) Gecko/20061208 Firefox/2.0.0 profile/MIDP-2.1 configuration/CLDC-1.1").browser());
 		test::black_box(Client::new("Mozilla/5.0 (Android; Tablet: SAMSUNG-SGH-I467; rv:20.0) Gecko/20.0 Firefox/20.0").browser());
@@ -101,7 +104,7 @@ fn bench_browser_bottom(b: &mut Bencher) {
 
 #[bench]
 fn bench_os_top(b: &mut Bencher) {
-	b.iter(|| {
+    b.iter(|| {
 		test::black_box(Client::new("Mozilla/5.0 (Unknown; Linux armv7l) AppleWebKit/537.1+ (KHTML, like Gecko) Safari/537.1+ HbbTV/1.1.1 ( ;LGE ;NetCast 4.0 ;03.20.30 ;1.0M ;)").os());
 		test::black_box(Client::new("Mozilla/5.0 (DirectFB; Linux armv7l) AppleWebKit/534.26+ (KHTML, like Gecko) Version/5.0 Safari/534.26+ HbbTV/1.1.1 ( ;LGE ;NetCast 3.0 ;1.0 ;1.0M ;)").os());
 		test::black_box(Client::new("HbbTV/1.1.1 (;;;;;) Maple_2011").os());
@@ -117,23 +120,25 @@ fn bench_os_top(b: &mut Bencher) {
 
 #[bench]
 fn bench_os_middle(b: &mut Bencher) {
-	b.iter(|| {
-		test::black_box(Client::new("TestApp/1.0 CFNetwork/758.0.2 Darwin/15.0.0").os());
-		test::black_box(Client::new("TestApp/1.0 CFNetwork/808.0.2 Darwin/16.0.0").os());
-		test::black_box(Client::new("MyApp/1.0 CFNetwork/893.13.1 Darwin/17.3.0 (x86_64)").os());
-		test::black_box(Client::new("Safari/12602.2.14.0.7 CFNetwork/807.1.3 Darwin/16.1.0 (x86_64)").os());
-		test::black_box(Client::new("Cooliris/1.3 CFNetwork/342.1 Darwin/9.4.1").os());
-		test::black_box(Client::new("MobileRSSFree-iPad/3.1 CFNetwork/467.12 Darwin/10.3.1").os());
-		test::black_box(Client::new("Yelp/8.2.1 CFNetwork/705.1 Darwin/14.0.0").os());
-		test::black_box(Client::new("MyApp/1.0 CFNetwork/811.4.18 Darwin/16.5.0").os());
-		test::black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.6.0").os());
-		test::black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.7.0").os());
-	});
+    b.iter(|| {
+        test::black_box(Client::new("TestApp/1.0 CFNetwork/758.0.2 Darwin/15.0.0").os());
+        test::black_box(Client::new("TestApp/1.0 CFNetwork/808.0.2 Darwin/16.0.0").os());
+        test::black_box(Client::new("MyApp/1.0 CFNetwork/893.13.1 Darwin/17.3.0 (x86_64)").os());
+        test::black_box(
+            Client::new("Safari/12602.2.14.0.7 CFNetwork/807.1.3 Darwin/16.1.0 (x86_64)").os(),
+        );
+        test::black_box(Client::new("Cooliris/1.3 CFNetwork/342.1 Darwin/9.4.1").os());
+        test::black_box(Client::new("MobileRSSFree-iPad/3.1 CFNetwork/467.12 Darwin/10.3.1").os());
+        test::black_box(Client::new("Yelp/8.2.1 CFNetwork/705.1 Darwin/14.0.0").os());
+        test::black_box(Client::new("MyApp/1.0 CFNetwork/811.4.18 Darwin/16.5.0").os());
+        test::black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.6.0").os());
+        test::black_box(Client::new("MyApp/1.0 CFNetwork/811.5.4 Darwin/16.7.0").os());
+    });
 }
 
 #[bench]
 fn bench_os_bottom(b: &mut Bencher) {
-	b.iter(|| {
+    b.iter(|| {
 		test::black_box(Client::new("Mozilla/5.0 (hp-tablet; Linux; hpwOS/3.0.5; U; en-US) AppleWebKit/534.6 (KHTML, like Gecko) wOSBrowser/234.83 Safari/534.6 TouchPad/1.0").os());
 		test::black_box(Client::new("Opera/9.80 (VRE; Opera Mini/4.2/28.2794; U; en) Presto/2.8.119 Version/11.10").os());
 		test::black_box(Client::new("Mozilla/5.0 (SAMSUNG; SAMSUNG-GT-S8600/S8600BOKK6; U; Bada/2.0; de-de) AppleWebKit/534.20 (KHTML, like Gecko) Dolfin/3.0 Mobile WVGA SMM-MMS/1.2.0 OPN-B").os());

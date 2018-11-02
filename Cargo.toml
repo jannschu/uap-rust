@@ -10,9 +10,6 @@ repository = "https://github.com/yaccio/uap-rust"
 documentation = "https://mrbechcrates.github.io/uap-rust-doc/uap_rust/index.html"
 keywords = ["user", "agent"]
 
-[features]
-with-bench = []
-
 [dependencies]
 lazy-init = "0.3"
 lazy_static = "1.0"

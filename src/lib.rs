@@ -18,11 +18,6 @@
 //! println!("{:?}", os);
 //! println!("{:?}", device);
 //! ```
-#![cfg_attr(feature = "with-bench", feature(test))]
-
-#[cfg(all(test, feature = "with-bench"))]
-extern crate test;
-
 extern crate regex;
 
 extern crate lazy_init;
@@ -38,9 +33,6 @@ use std::str::FromStr;
 
 mod client;
 mod parser;
-
-#[cfg(all(test, feature = "with-bench"))]
-mod benchmarks;
 
 pub use client::Client;
 
