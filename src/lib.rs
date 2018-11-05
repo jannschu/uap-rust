@@ -3,39 +3,75 @@
 //! This is a web browser user agent parser for Rust based on
 //! [ua-parser](https://github.com/ua-parser).
 //!
+//! The crate offers parsers with optional thread
+//! safety. The regular expressions for detecting the browser, device or os
+//! are only run when requested. Also, parsers can be chosen to own or
+//! borrow the user agent string. We try to avoid string allocation as much
+//! as possible.
+//!
 //! ## Usage example
 //!
 //! ```rust
-//! use uap_rust::Client;
+//! use uap_rust::unsync::BorrowingParser as Parser;
 //! let agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9B206 Safari/7534.48.3";
-//! let client = Client::new(agent);
+//! let parser = Parser::new(agent);
 //!
-//! let browser = client.browser();
-//! let os = client.os();
-//! let device = client.device();
+//! let browser = parser.browser();
+//! assert_eq!(browser.family, "Mobile Safari");
+//! let browser_version = browser.version().unwrap();
+//! assert_eq!(browser_version.major, 5);
+//! assert_eq!(browser_version.minor, 1);
 //!
-//! println!("{:?}", browser);
-//! println!("{:?}", os);
-//! println!("{:?}", device);
+//! let os = parser.os();
+//! assert_eq!(os.family, "iOS");
+//! let os_version = os.version().unwrap();
+//! assert_eq!(os_version.major, 5);
+//! assert_eq!(os_version.minor, 1);
+//! 
+//! let device = parser.device();
+//! assert_eq!(device.family, "iPhone");
+//! assert_eq!(device.brand.as_ref().unwrap(), "Apple");
 //! ```
+//!
+//! To use a `Arc<str>` as a user agent:
+//! 
+//! ```rust
+//! # use std::sync::Arc;
+//! use uap_rust::sync::OwningParser as Parser;
+//! let agent: Arc<str> = Arc::from("Mozilla/5.0 ...");
+//! let parser = Parser::new(agent.clone());
+//! ```
+//!
+//! In the example above `agent` can also be a `String`. To use `Rc`,
+//! additionally replace `unsync` by `sync`.
+//! 
+//! The `OwningParser` variant is a convenience wrapper around
+//! `BorrowingParser` to allow storing the user agent along the parser, which
+//! is not trivial, since rust does not understand self-referential structs.
 extern crate regex;
 
-extern crate lazy_init;
+extern crate once_cell;
 #[macro_use]
 extern crate lazy_static;
 extern crate rmp_serde as rmps;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate owning_ref;
+extern crate semver_parser;
+extern crate stable_deref_trait;
+#[macro_use]
+extern crate rental;
 
+use semver_parser::version::{parse as parse_version, Version};
 use std::borrow::Cow;
 use std::str::FromStr;
 
-mod client;
 mod parser;
+mod ua_core;
 
-pub use client::Client;
+pub use parser::sync;
+pub use parser::unsync;
+pub use parser::UserAgentInformation;
 
 /// `Browser` contains browser information from the user agent.
 #[derive(Debug, PartialEq, Eq)]
@@ -109,6 +145,17 @@ macro_rules! default_parse {
 }
 
 impl<'a> Browser<'a> {
+    pub fn version(&self) -> Option<Version> {
+        match (&self.major, &self.minor, &self.patch) {
+            (Some(major), Some(minor), Some(patch)) => {
+                parse_version(&format!("{}.{}.{}", major, minor, patch)).ok()
+            }
+            (Some(major), Some(minor), None) => parse_version(&format!("{}.{}.0", major, minor)).ok(),
+            (Some(major), None, None) => parse_version(&format!("{}.0.0", major)).ok(),
+            _ => parse_version("").ok(),
+        }
+    }
+
     pub fn major_or<T: FromStr>(&self, default: T) -> T {
         default_parse!(self, major, default)
     }
@@ -123,6 +170,22 @@ impl<'a> Browser<'a> {
 }
 
 impl<'a> OS<'a> {
+    pub fn version(&self) -> Option<Version> {
+        match (&self.major, &self.minor, &self.patch, &self.patch_minor) {
+            (Some(major), Some(minor), Some(patch), Some(patch_minor)) => {
+                parse_version(&format!("{}.{}.{}-{}", major, minor, patch, patch_minor)).ok()
+            }
+            (Some(major), Some(minor), Some(patch), None) => {
+                parse_version(&format!("{}.{}.{}", major, minor, patch)).ok()
+            }
+            (Some(major), Some(minor), None, None) => {
+                parse_version(&format!("{}.{}.0", major, minor)).ok()
+            }
+            (Some(major), None, None, None) => parse_version(&format!("{}", major)).ok(),
+            _ => parse_version("").ok(),
+        }
+    }
+
     pub fn major_or<T: FromStr>(&self, default: T) -> T {
         default_parse!(self, major, default)
     }
