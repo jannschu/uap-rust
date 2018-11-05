@@ -1,14 +1,13 @@
 [package]
 name = "uap-rust"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jannik Schürg <jannschu@posteo.de>", "Martin <martin@yacc.io>"]
 description = "User agent parser library for Rust based on the ua-parser project"
 
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/yaccio/uap-rust"
-documentation = "https://mrbechcrates.github.io/uap-rust-doc/uap_rust/index.html"
-keywords = ["user", "agent"]
+repository = "https://github.com/jannschu/uap-rust"
+keywords = ["user", "agent", "parse"]
 
 [dev-dependencies]
 criterion = "0.2"
@@ -18,8 +17,10 @@ name = "top_middle_bottom"
 harness = false
 
 [dependencies]
-owning_ref = "0.4"
-lazy-init = "0.3"
+semver-parser = "0.9"
+rental = "0.5"
+stable_deref_trait = "1.1"
+once_cell = "0.1"
 lazy_static = "1.0"
 regex = "1.0"
 rmp-serde = "0.13"
