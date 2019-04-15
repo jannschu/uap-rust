@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use regex::{Captures, Regex};
+use regex::{Captures, Regex, RegexBuilder};
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
@@ -69,7 +69,8 @@ macro_rules! derive_with_regex_field {
     	        where D: Deserializer<'de>
     	    {
     	        let raw = $name_raw::deserialize(deserializer)?;
-    	        let regex = match Regex::new(&raw.regex) {
+                let mut builder = RegexBuilder::new(&raw.regex);
+    	        let regex = match builder.size_limit(2 * 10_485_760).build() {
     	        	Ok(regex) => regex,
     	        	Err(err) => {
     	        		let err = D::Error::custom(

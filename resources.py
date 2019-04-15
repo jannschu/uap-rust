@@ -34,7 +34,7 @@ def save(path, content):
 def yaml_to_msgpack(yaml_str, patch=None):
     """Convert a YAML to MessagePack format."""
     print("Parse YAML. ", end='', flush=True)
-    obj = yaml.load(yaml_str)
+    obj = yaml.load(yaml_str, Loader=yaml.FullLoader)
     if callable(patch):
         print("Patch. ", end='', flush=True)
         obj = patch(obj)

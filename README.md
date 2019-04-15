@@ -40,7 +40,7 @@ assert_eq!(device.brand.as_ref().unwrap(), "Apple");
 To use a `Arc<str>` as a user agent do
 
 ```rust
-# use std::sync::Arc;
+// use std::sync::Arc;
 use uap_rust::sync::OwningParser as Parser;
 let agent: Arc<str> = Arc::from("Mozilla/5.0 ...");
 let parser = Parser::new(agent.clone());

@@ -1,6 +1,6 @@
 [package]
 name = "uap-rust"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Jannik Schürg <jannschu@posteo.de>", "Martin <martin@yacc.io>"]
 description = "User agent parser library for Rust based on the ua-parser project"
 
@@ -22,7 +22,7 @@ rental = "0.5"
 stable_deref_trait = "1.1"
 once_cell = "0.1"
 lazy_static = "1.0"
-regex = "1.0"
+regex = "1.1"
 rmp-serde = "0.13"
 serde = "1.0"
 serde_derive = "1.0"
