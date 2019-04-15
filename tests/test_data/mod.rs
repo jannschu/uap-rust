@@ -1,5 +1,6 @@
-use rmps;
-
+use lazy_static::lazy_static;
+use rmp_serde as rmps;
+use serde_derive::Deserialize;
 use uap_rust::{Browser, Device, OS};
 
 lazy_static! {

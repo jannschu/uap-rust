@@ -27,14 +27,14 @@
 //! let os_version = os.version().unwrap();
 //! assert_eq!(os_version.major, 5);
 //! assert_eq!(os_version.minor, 1);
-//! 
+//!
 //! let device = parser.device();
 //! assert_eq!(device.family, "iPhone");
 //! assert_eq!(device.brand.as_ref().unwrap(), "Apple");
 //! ```
 //!
 //! To use a `Arc<str>` as a user agent:
-//! 
+//!
 //! ```rust
 //! # use std::sync::Arc;
 //! use uap_rust::sync::OwningParser as Parser;
@@ -44,21 +44,10 @@
 //!
 //! In the example above `agent` can also be a `String`. To use `Rc`,
 //! additionally replace `unsync` by `sync`.
-//! 
+//!
 //! The `OwningParser` variant is a convenience wrapper around
 //! `BorrowingParser` to allow storing the user agent along the parser, which
 //! is not trivial, since rust does not understand self-referential structs.
-extern crate regex;
-
-extern crate once_cell;
-#[macro_use]
-extern crate lazy_static;
-extern crate rmp_serde as rmps;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate semver_parser;
-extern crate stable_deref_trait;
 #[macro_use]
 extern crate rental;
 
@@ -69,9 +58,9 @@ use std::str::FromStr;
 mod parser;
 mod ua_core;
 
-pub use parser::sync;
-pub use parser::unsync;
-pub use parser::UserAgentInformation;
+pub use crate::parser::sync;
+pub use crate::parser::unsync;
+pub use crate::parser::UserAgentInformation;
 
 /// `Browser` contains browser information from the user agent.
 #[derive(Debug, PartialEq, Eq)]
@@ -150,7 +139,9 @@ impl<'a> Browser<'a> {
             (Some(major), Some(minor), Some(patch)) => {
                 parse_version(&format!("{}.{}.{}", major, minor, patch)).ok()
             }
-            (Some(major), Some(minor), None) => parse_version(&format!("{}.{}.0", major, minor)).ok(),
+            (Some(major), Some(minor), None) => {
+                parse_version(&format!("{}.{}.0", major, minor)).ok()
+            }
             (Some(major), None, None) => parse_version(&format!("{}.0.0", major)).ok(),
             _ => parse_version("").ok(),
         }

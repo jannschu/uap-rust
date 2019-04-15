@@ -4,10 +4,13 @@ use regex::{Captures, Regex, RegexBuilder};
 
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
+use serde_derive::Deserialize;
 
-use rmps;
+use lazy_static::lazy_static;
 
-use {Browser, Device, DEFAULT_NAME, OS};
+use rmp_serde as rmps;
+
+use crate::{Browser, Device, DEFAULT_NAME, OS};
 
 static UA_PARSER_REGEX_DATA: &'static [u8] = include_bytes!("../resources/regexes.msgpack");
 

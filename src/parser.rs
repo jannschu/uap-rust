@@ -1,10 +1,10 @@
-use {Browser, Device, OS};
+use crate::{Browser, Device, OS};
 
 rental! {
     mod owned {
         use std::ops::Deref;
         use stable_deref_trait::StableDeref;
-        use {Browser as BrowserBorrowed, Device as DeviceBorrowed, OS as OSBorrowed};
+        use crate::{Browser as BrowserBorrowed, Device as DeviceBorrowed, OS as OSBorrowed};
 
         #[rental(covariant)]
         pub struct Browser<T>
@@ -47,9 +47,9 @@ macro_rules! create_parser {
     ($rc:path, $cell:path) => {
         use super::owned;
         use super::UserAgentInformation;
+        use crate::{Browser, Device, OS};
         use $cell;
         use $rc as RefCount;
-        use {Browser, Device, OS};
 
         /// Parser for a user agent. The parser takes
         /// an browser user agent string by reference.
@@ -224,7 +224,7 @@ macro_rules! create_parser {
 }
 
 pub mod sync {
-    create_parser!{std::sync::Arc, once_cell::sync::OnceCell}
+    create_parser! {std::sync::Arc, once_cell::sync::OnceCell}
 
     #[test]
     fn test_sync() {
@@ -254,5 +254,5 @@ pub mod sync {
 }
 
 pub mod unsync {
-    create_parser!{std::rc::Rc, once_cell::unsync::OnceCell}
+    create_parser! {std::rc::Rc, once_cell::unsync::OnceCell}
 }

@@ -1,11 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-extern crate rmp_serde as rmps;
-#[macro_use]
-extern crate serde_derive;
-
-extern crate uap_rust;
-
 use uap_rust::unsync::BorrowingParser as Parser;
 use uap_rust::{Browser, Device, OS};
 
